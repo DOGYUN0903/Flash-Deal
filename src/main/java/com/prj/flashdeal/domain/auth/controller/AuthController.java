@@ -7,8 +7,9 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.prj.flashdeal.domain.auth.dto.request.LoginRequest;
 import com.prj.flashdeal.domain.auth.dto.request.SignupRequest;
-import com.prj.flashdeal.domain.auth.dto.response.SignupResponse;
+import com.prj.flashdeal.domain.auth.dto.response.TokenResponse;
 import com.prj.flashdeal.domain.auth.service.AuthService;
 import com.prj.flashdeal.global.response.ApiResponse;
 
@@ -23,11 +24,20 @@ public class AuthController {
     private final AuthService authService;
 
     @PostMapping("/signup")
-    public ResponseEntity<ApiResponse<SignupResponse>> signup(@Valid @RequestBody SignupRequest request) {
+    public ResponseEntity<ApiResponse<TokenResponse>> signup(@Valid @RequestBody SignupRequest request) {
         return ApiResponse.success(
             HttpStatus.CREATED,
             "회원가입이 완료되었습니다.",
             authService.signup(request)
+        );
+    }
+
+    @PostMapping("/login")
+    public ResponseEntity<ApiResponse<TokenResponse>> login(@Valid @RequestBody LoginRequest request) {
+        return ApiResponse.success(
+            HttpStatus.OK,
+            "로그인이 완료되었습니다.",
+            authService.login(request)
         );
     }
 }

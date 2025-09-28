@@ -4,10 +4,12 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.prj.flashdeal.domain.auth.dto.request.LoginRequest;
 import com.prj.flashdeal.domain.auth.dto.request.SignupRequest;
-import com.prj.flashdeal.domain.auth.dto.response.SignupResponse;
+import com.prj.flashdeal.domain.auth.dto.response.TokenResponse;
 import com.prj.flashdeal.domain.member.entity.Address;
 import com.prj.flashdeal.domain.member.entity.Member;
+import com.prj.flashdeal.domain.member.entity.MemberStatus;
 import com.prj.flashdeal.domain.member.exception.MemberErrorCode;
 import com.prj.flashdeal.domain.member.exception.MemberException;
 import com.prj.flashdeal.domain.member.repository.MemberRepository;
@@ -24,7 +26,7 @@ public class AuthService {
     private final JwtUtil jwtUtil;
 
     @Transactional
-    public SignupResponse signup(SignupRequest request) {
+    public TokenResponse signup(SignupRequest request) {
 
         // 1. 이메일 중복 확인
         if (memberRepository.existsByEmail(request.getEmail())) {
@@ -61,6 +63,35 @@ public class AuthService {
         );
 
         // 6. 결과 반환
-        return SignupResponse.of(accessToken);
+        return TokenResponse.of(accessToken);
+    }
+
+    @Transactional(readOnly = true)
+    public TokenResponse login(LoginRequest request) {
+
+        // 1. 이메일을 활용하여 멤버 찾기
+        Member member = memberRepository.findByEmail(request.getEmail())
+            .orElseThrow(() -> new MemberException(MemberErrorCode.MEMBER_NOT_FOUND));
+
+        // 2. 멤버 상태가 '활동'인지 확인
+        if (member.getStatus() != MemberStatus.ACTIVE) {
+            throw new MemberException(MemberErrorCode.INACTIVE_MEMBER);
+        }
+
+        // 3. 비밀번호가 일치하는지 확인
+        if (!passwordEncoder.matches(request.getPassword(), member.getPassword())) {
+            throw new MemberException(MemberErrorCode.INVALID_PASSWORD);
+        }
+
+        // 4. 토큰 생성
+        String accessToken = jwtUtil.createToken(
+            member.getId(),
+            member.getEmail(),
+            member.getName(),
+            member.getRole()
+        );
+
+        // 5. 결과 반환
+        return TokenResponse.of(accessToken);
     }
 }
