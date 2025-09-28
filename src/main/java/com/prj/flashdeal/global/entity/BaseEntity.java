@@ -21,12 +21,14 @@ public abstract class BaseEntity {
     private LocalDateTime createdAt;
 
     @LastModifiedDate
+    @Column(name = "updated_at")
     private LocalDateTime updatedAt;
 
-    private LocalDateTime deletedAt = null;
+    @Column(name = "is_deleted", nullable = false)
+    private Boolean isDeleted = false;
 
     // soft delete 메서드
     public void delete() {
-        this.deletedAt = LocalDateTime.now();
+        this.isDeleted = true;
     }
 }

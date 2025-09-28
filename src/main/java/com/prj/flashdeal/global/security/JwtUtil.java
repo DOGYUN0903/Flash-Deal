@@ -34,26 +34,24 @@ public class JwtUtil {
         key = Keys.hmacShaKeyFor(secretKey.getBytes(StandardCharsets.UTF_8));
     }
 
-    public String createToken(Long userId, String email, String nickname , Role role) {
+    public String createToken(Long userId, String email, String name , Role role) {
         Date date = new Date();
 
-        return BEARER_PREFIX +
-                Jwts.builder()
-                        .setSubject(String.valueOf(userId))
-                        .claim("email", email)
-                        .claim("nickname", nickname)
-                        .claim("userRole", role)
-                        .setExpiration(new Date(date.getTime() + TOKEN_TIME))
-                        .setIssuedAt(date) // 발급일
-                        .signWith(key, signatureAlgorithm) // 암호화 알고리즘
-                        .compact();
+        return Jwts.builder()
+            .setSubject(String.valueOf(userId))
+            .claim("email", email)
+            .claim("name", name)
+            .claim("role", role.name())
+            .setExpiration(new Date(date.getTime() + TOKEN_TIME))
+            .setIssuedAt(date)
+            .signWith(key, signatureAlgorithm)
+            .compact();
     }
 
-    public String substringToken(String tokenValue) {
+    public String resolveToken(String tokenValue) {
         if (StringUtils.hasText(tokenValue) && tokenValue.startsWith(BEARER_PREFIX)) {
             return tokenValue.substring(7);
         }
-
         return null;
     }
 
