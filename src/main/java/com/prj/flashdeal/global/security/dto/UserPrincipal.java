@@ -7,7 +7,7 @@ import lombok.Getter;
 
 @AllArgsConstructor
 @Getter
-public class UserPrinciple {
+public class UserPrincipal {
 
     private final Long userId;
 
