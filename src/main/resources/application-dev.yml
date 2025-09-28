@@ -14,3 +14,7 @@ spring:
       hibernate:
         dialect: org.hibernate.dialect.MySQLDialect
         format_sql: true
+
+# JWT 토큰
+jwt:
+  secret: ${JWT_SECRET_KEY}
