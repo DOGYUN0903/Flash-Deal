@@ -41,7 +41,7 @@ public class JwtFilter extends OncePerRequestFilter {
 
         // 2. 토큰이 존재하고, 'Bearer '로 시작하는 경우에만 인증 절차를 진행합니다.
         if (StringUtils.hasText(authorizationHeader) && authorizationHeader.startsWith("Bearer ")) {
-            String jwt = jwtUtil.substringToken(authorizationHeader);
+            String jwt = jwtUtil.resolveToken(authorizationHeader);
 
             try {
                 // 3. 토큰이 유효하면, Claims를 추출하고 인증 객체를 만들어 SecurityContext에 저장합니다.
