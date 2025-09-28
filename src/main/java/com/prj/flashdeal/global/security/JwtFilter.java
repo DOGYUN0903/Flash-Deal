@@ -11,7 +11,7 @@ import org.springframework.util.StringUtils;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import com.prj.flashdeal.domain.member.entity.Role;
-import com.prj.flashdeal.global.security.dto.UserPrinciple;
+import com.prj.flashdeal.global.security.dto.UserPrincipal;
 
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.ExpiredJwtException;
@@ -51,7 +51,7 @@ public class JwtFilter extends OncePerRequestFilter {
                 long userId = Long.parseLong(claims.getSubject());
 
                 UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
-                    new UserPrinciple(userId, userRole), // UserPrincipal 사용을 강력히 권장합니다.
+                    new UserPrincipal(userId, userRole), // UserPrincipal 사용을 강력히 권장합니다.
                     null,
                     List.of(new SimpleGrantedAuthority("ROLE_" + userRole.name()))
                 );
