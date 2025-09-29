@@ -1,16 +1,20 @@
 package com.prj.flashdeal.domain.product.service;
 
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.prj.flashdeal.domain.product.dto.request.ProductCreateRequest;
+import com.prj.flashdeal.domain.product.dto.request.ProductSearchCondForAdmin;
 import com.prj.flashdeal.domain.product.dto.request.ProductUpdateRequest;
 import com.prj.flashdeal.domain.product.dto.request.StockAddRequest;
 import com.prj.flashdeal.domain.product.dto.response.ProductResponse;
+import com.prj.flashdeal.domain.product.dto.response.ProductSummaryResponse;
 import com.prj.flashdeal.domain.product.entity.Product;
 import com.prj.flashdeal.domain.product.exception.ProductErrorCode;
 import com.prj.flashdeal.domain.product.exception.ProductException;
 import com.prj.flashdeal.domain.product.repository.ProductRepository;
+import com.prj.flashdeal.global.response.PageResponse;
 
 import lombok.RequiredArgsConstructor;
 
@@ -60,6 +64,11 @@ public class ProductService {
         Product product = getProduct(productId);
 
         product.delete();
+    }
+
+    @Transactional(readOnly = true)
+    public PageResponse<ProductSummaryResponse> searchProductsForAdmin(ProductSearchCondForAdmin cond, Pageable pageable) {
+        return new PageResponse<>(productRepository.searchProductsForAdmin(cond, pageable));
     }
 
     // ---------------- private 헬퍼 메서드 ----------------
