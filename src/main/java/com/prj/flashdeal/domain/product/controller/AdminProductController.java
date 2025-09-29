@@ -2,6 +2,7 @@ package com.prj.flashdeal.domain.product.controller;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -9,6 +10,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.prj.flashdeal.domain.product.dto.request.ProductCreateRequest;
+import com.prj.flashdeal.domain.product.dto.request.ProductUpdateRequest;
 import com.prj.flashdeal.domain.product.dto.request.StockAddRequest;
 import com.prj.flashdeal.domain.product.dto.response.ProductResponse;
 import com.prj.flashdeal.domain.product.service.ProductService;
@@ -43,6 +45,18 @@ public class AdminProductController {
             HttpStatus.OK,
             "재고가 추가되었습니다.",
             productService.addStock(productId, request)
+        );
+    }
+
+    @PatchMapping("/{productId}")
+    public ResponseEntity<ApiResponse<ProductResponse>> updateProduct(
+        @PathVariable Long productId,
+        @RequestBody ProductUpdateRequest request
+    ) {
+        return ApiResponse.success(
+            HttpStatus.OK,
+            "상품 수정이 완료되었습니다.",
+            productService.updateProduct(productId, request)
         );
     }
 }

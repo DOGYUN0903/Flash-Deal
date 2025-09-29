@@ -4,6 +4,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.prj.flashdeal.domain.product.dto.request.ProductCreateRequest;
+import com.prj.flashdeal.domain.product.dto.request.ProductUpdateRequest;
 import com.prj.flashdeal.domain.product.dto.request.StockAddRequest;
 import com.prj.flashdeal.domain.product.dto.response.ProductResponse;
 import com.prj.flashdeal.domain.product.entity.Product;
@@ -34,11 +35,29 @@ public class ProductService {
 
     @Transactional
     public ProductResponse addStock(Long productId, StockAddRequest request) {
-        Product product = productRepository.findById(productId)
-            .orElseThrow(() -> new ProductException(ProductErrorCode.PRODUCT_NOT_FOUND));
+        Product product = getProduct(productId);
 
         product.addStock(request.getQuantity());
 
         return ProductResponse.from(product);
+    }
+
+    @Transactional
+    public ProductResponse updateProduct(Long productId, ProductUpdateRequest request) {
+        Product product = getProduct(productId);
+
+        product.updateInfo(
+            request.getName(),
+            request.getDescription(),
+            request.getPrice()
+        );
+
+        return ProductResponse.from(product);
+    }
+
+    // ---------------- private 헬퍼 메서드 ----------------
+    private Product getProduct(Long productId) {
+        return productRepository.findById(productId)
+            .orElseThrow(() -> new ProductException(ProductErrorCode.PRODUCT_NOT_FOUND));
     }
 }

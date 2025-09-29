@@ -71,4 +71,22 @@ public class Product extends BaseEntity {
             this.status = ProductStatus.ON_SALE;
         }
     }
+
+    public void updateInfo(String name, String description, Integer price) {
+        if (name != null){
+            if (name.isBlank()) {
+                throw new ProductException(ProductErrorCode.BLANK_PRODUCT_NAME);
+            }
+            this.name = name;
+        }
+        if (description != null){
+            this.description = description;
+        }
+        if (price != null) {
+            if (price <= 0) {
+                throw new ProductException(ProductErrorCode.INVALID_PRICE);
+            }
+            this.price = price;
+        }
+    }
 }
