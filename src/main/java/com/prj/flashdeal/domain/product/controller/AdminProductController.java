@@ -69,6 +69,17 @@ public class AdminProductController {
         );
     }
 
+    @GetMapping("/{productId}")
+    public ResponseEntity<ApiResponse<ProductResponse>> getProductForAdmin(
+        @PathVariable Long productId
+    ) {
+        return ApiResponse.success(
+            HttpStatus.OK,
+            "관리자용 상품 상세 조회에 성공하였습니다.",
+            productService.getProductForAdmin(productId)
+        );
+    }
+
     @PatchMapping("/{productId}")
     public ResponseEntity<ApiResponse<ProductResponse>> updateProduct(
         @PathVariable Long productId,

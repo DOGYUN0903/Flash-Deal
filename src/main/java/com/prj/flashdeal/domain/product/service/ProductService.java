@@ -46,6 +46,18 @@ public class ProductService {
         return ProductResponse.from(product);
     }
 
+    @Transactional(readOnly = true)
+    public PageResponse<ProductSummaryResponse> searchProductsForAdmin(ProductSearchCondForAdmin cond, Pageable pageable) {
+        return new PageResponse<>(productRepository.searchProductsForAdmin(cond, pageable));
+    }
+
+    @Transactional(readOnly = true)
+    public ProductResponse getProductForAdmin(Long productId) {
+        Product product = getProduct(productId);
+
+        return ProductResponse.from(product);
+    }
+
     @Transactional
     public ProductResponse updateProduct(Long productId, ProductUpdateRequest request) {
         Product product = getProduct(productId);
@@ -64,11 +76,6 @@ public class ProductService {
         Product product = getProduct(productId);
 
         product.delete();
-    }
-
-    @Transactional(readOnly = true)
-    public PageResponse<ProductSummaryResponse> searchProductsForAdmin(ProductSearchCondForAdmin cond, Pageable pageable) {
-        return new PageResponse<>(productRepository.searchProductsForAdmin(cond, pageable));
     }
 
     // ---------------- private 헬퍼 메서드 ----------------
