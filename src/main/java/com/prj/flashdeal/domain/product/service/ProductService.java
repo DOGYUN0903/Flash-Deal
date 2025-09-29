@@ -55,9 +55,22 @@ public class ProductService {
         return ProductResponse.from(product);
     }
 
+    @Transactional
+    public void deleteProduct(Long productId) {
+        Product product = getProduct(productId);
+
+        product.delete();
+    }
+
     // ---------------- private 헬퍼 메서드 ----------------
     private Product getProduct(Long productId) {
-        return productRepository.findById(productId)
+        Product product = productRepository.findById(productId)
             .orElseThrow(() -> new ProductException(ProductErrorCode.PRODUCT_NOT_FOUND));
+
+        if (product.getIsDeleted()) {
+            throw new ProductException(ProductErrorCode.ALREADY_DELETED_PRODUCT);
+        }
+
+        return product;
     }
 }

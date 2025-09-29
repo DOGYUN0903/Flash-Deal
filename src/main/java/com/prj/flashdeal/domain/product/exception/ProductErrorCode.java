@@ -15,7 +15,8 @@ public enum ProductErrorCode implements ErrorCode {
     PRODUCT_NOT_FOUND("상품을 찾을 수 없습니다.", HttpStatus.NOT_FOUND),
     INVALID_STOCK_QUANTITY("재고 수량은 0보다 커야합니다.", HttpStatus.BAD_REQUEST),
     INVALID_PRICE("상품 금액은 0보다 커야합니다.", HttpStatus.BAD_REQUEST),
-    BLANK_PRODUCT_NAME("상품명은 비워둘 수 없습니다.", HttpStatus.BAD_REQUEST);
+    BLANK_PRODUCT_NAME("상품명은 비워둘 수 없습니다.", HttpStatus.BAD_REQUEST),
+    ALREADY_DELETED_PRODUCT("이미 삭제된 상품입니다.", HttpStatus.NOT_FOUND);
 
     private final String message;
     private final HttpStatus status;
