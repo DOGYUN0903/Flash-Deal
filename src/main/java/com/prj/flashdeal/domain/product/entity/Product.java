@@ -60,4 +60,15 @@ public class Product extends BaseEntity {
         this.stockQuantity = 0;
         this.status = ProductStatus.PREPARING;
     }
+
+    public void addStock(Integer quantity) {
+        if (quantity <= 0) {
+            throw new ProductException(ProductErrorCode.INVALID_STOCK_QUANTITY);
+        }
+        this.stockQuantity += quantity;
+
+        if (this.status == ProductStatus.PREPARING || this.status == ProductStatus.SOLD_OUT) {
+            this.status = ProductStatus.ON_SALE;
+        }
+    }
 }
