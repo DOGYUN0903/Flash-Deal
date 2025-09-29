@@ -47,7 +47,7 @@ public class JwtFilter extends OncePerRequestFilter {
                 // 3. 토큰이 유효하면, Claims를 추출하고 인증 객체를 만들어 SecurityContext에 저장합니다.
                 Claims claims = jwtUtil.extractClaims(jwt);
 
-                Role userRole = Role.valueOf(claims.get("userRole", String.class));
+                Role userRole = Role.valueOf(claims.get("role", String.class));
                 long userId = Long.parseLong(claims.getSubject());
 
                 UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
