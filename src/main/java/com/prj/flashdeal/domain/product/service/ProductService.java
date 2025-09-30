@@ -6,6 +6,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.prj.flashdeal.domain.product.dto.request.ProductCreateRequest;
 import com.prj.flashdeal.domain.product.dto.request.ProductSearchCondForAdmin;
+import com.prj.flashdeal.domain.product.dto.request.ProductSearchCondForUser;
 import com.prj.flashdeal.domain.product.dto.request.ProductUpdateRequest;
 import com.prj.flashdeal.domain.product.dto.request.StockAddRequest;
 import com.prj.flashdeal.domain.product.dto.response.ProductResponse;
@@ -24,6 +25,7 @@ public class ProductService {
 
     private final ProductRepository productRepository;
 
+    // ---------------- Admin 전용 비즈니스 로직 ----------------
     @Transactional
     public ProductResponse createProduct(ProductCreateRequest request) {
         Product product = Product.builder()
@@ -78,6 +80,12 @@ public class ProductService {
         product.delete();
     }
 
+    // ---------------- User 전용 비즈니스 로직 ----------------
+    @Transactional(readOnly = true)
+    public PageResponse<ProductSummaryResponse> searchProductsForUser(ProductSearchCondForUser cond, Pageable pageable) {
+        return new PageResponse<>(productRepository.searchProductsForUser(cond, pageable));
+    }
+
     // ---------------- private 헬퍼 메서드 ----------------
     private Product getProduct(Long productId) {
         Product product = productRepository.findById(productId)
@@ -89,4 +97,6 @@ public class ProductService {
 
         return product;
     }
+
+
 }
