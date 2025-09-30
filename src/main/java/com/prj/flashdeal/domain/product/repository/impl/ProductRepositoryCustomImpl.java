@@ -13,6 +13,7 @@ import org.springframework.stereotype.Repository;
 import org.springframework.util.StringUtils;
 
 import com.prj.flashdeal.domain.product.dto.request.ProductSearchCondForAdmin;
+import com.prj.flashdeal.domain.product.dto.request.ProductSearchCondForUser;
 import com.prj.flashdeal.domain.product.dto.response.ProductSummaryResponse;
 import com.prj.flashdeal.domain.product.entity.ProductStatus;
 import com.prj.flashdeal.domain.product.repository.ProductRepositoryCustom;
@@ -36,6 +37,7 @@ public class ProductRepositoryCustomImpl implements ProductRepositoryCustom {
             .select(Projections.constructor(ProductSummaryResponse.class,
                 product.id,
                 product.name,
+                product.price,
                 product.status))
             .from(product)
             .where(
@@ -47,7 +49,7 @@ public class ProductRepositoryCustomImpl implements ProductRepositoryCustom {
                 statusEq(cond.getStatus()),
                 isDeletedEq(cond.getIsDeleted())
             )
-            .orderBy(product.createdAt.asc())
+            .orderBy(product.createdAt.desc())
             .offset(pageable.getOffset())
             .limit(pageable.getPageSize())
             .fetch();
@@ -63,6 +65,42 @@ public class ProductRepositoryCustomImpl implements ProductRepositoryCustom {
                 registeredAtLoe(cond.getEndDate()),
                 statusEq(cond.getStatus()),
                 isDeletedEq(cond.getIsDeleted())
+            );
+
+        return PageableExecutionUtils.getPage(productSummaryResponseList, pageable, countQuery::fetchOne);
+    }
+
+    @Override
+    public Page<ProductSummaryResponse> searchProductsForUser(ProductSearchCondForUser cond, Pageable pageable) {
+
+        List<ProductSummaryResponse> productSummaryResponseList = queryFactory
+            .select(Projections.constructor(ProductSummaryResponse.class,
+                product.id,
+                product.name,
+                product.price,
+                product.status))
+            .from(product)
+            .where(
+                product.isDeleted.isFalse(),
+                product.status.in(ProductStatus.ON_SALE, ProductStatus.SOLD_OUT),
+                productNameContains(cond.getProductName()),
+                priceGoe(cond.getMinPrice()),
+                priceLoe(cond.getMaxPrice())
+            )
+            .orderBy(product.createdAt.desc())
+            .offset(pageable.getOffset())
+            .limit(pageable.getPageSize())
+            .fetch();
+
+        JPAQuery<Long> countQuery = queryFactory
+            .select(product.count())
+            .from(product)
+            .where(
+                product.isDeleted.isFalse(),
+                product.status.in(ProductStatus.ON_SALE, ProductStatus.SOLD_OUT),
+                productNameContains(cond.getProductName()),
+                priceGoe(cond.getMinPrice()),
+                priceLoe(cond.getMaxPrice())
             );
 
         return PageableExecutionUtils.getPage(productSummaryResponseList, pageable, countQuery::fetchOne);

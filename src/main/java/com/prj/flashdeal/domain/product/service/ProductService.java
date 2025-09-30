@@ -6,11 +6,14 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.prj.flashdeal.domain.product.dto.request.ProductCreateRequest;
 import com.prj.flashdeal.domain.product.dto.request.ProductSearchCondForAdmin;
+import com.prj.flashdeal.domain.product.dto.request.ProductSearchCondForUser;
 import com.prj.flashdeal.domain.product.dto.request.ProductUpdateRequest;
 import com.prj.flashdeal.domain.product.dto.request.StockAddRequest;
 import com.prj.flashdeal.domain.product.dto.response.ProductResponse;
+import com.prj.flashdeal.domain.product.dto.response.ProductResponseForUser;
 import com.prj.flashdeal.domain.product.dto.response.ProductSummaryResponse;
 import com.prj.flashdeal.domain.product.entity.Product;
+import com.prj.flashdeal.domain.product.entity.ProductStatus;
 import com.prj.flashdeal.domain.product.exception.ProductErrorCode;
 import com.prj.flashdeal.domain.product.exception.ProductException;
 import com.prj.flashdeal.domain.product.repository.ProductRepository;
@@ -24,6 +27,7 @@ public class ProductService {
 
     private final ProductRepository productRepository;
 
+    // ---------------- Admin 전용 비즈니스 로직 ----------------
     @Transactional
     public ProductResponse createProduct(ProductCreateRequest request) {
         Product product = Product.builder()
@@ -76,6 +80,23 @@ public class ProductService {
         Product product = getProduct(productId);
 
         product.delete();
+    }
+
+    // ---------------- User 전용 비즈니스 로직 ----------------
+    @Transactional(readOnly = true)
+    public PageResponse<ProductSummaryResponse> searchProductsForUser(ProductSearchCondForUser cond, Pageable pageable) {
+        return new PageResponse<>(productRepository.searchProductsForUser(cond, pageable));
+    }
+
+    @Transactional(readOnly = true)
+    public ProductResponseForUser getProductForUser(Long productId) {
+        Product product = getProduct(productId);
+
+        if (product.getStatus() != ProductStatus.ON_SALE && product.getStatus() != ProductStatus.SOLD_OUT) {
+            throw new ProductException(ProductErrorCode.PRODUCT_NOT_FOUND);
+        }
+
+        return ProductResponseForUser.from(product);
     }
 
     // ---------------- private 헬퍼 메서드 ----------------
