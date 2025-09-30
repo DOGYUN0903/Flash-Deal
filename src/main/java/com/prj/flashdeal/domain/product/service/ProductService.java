@@ -10,8 +10,10 @@ import com.prj.flashdeal.domain.product.dto.request.ProductSearchCondForUser;
 import com.prj.flashdeal.domain.product.dto.request.ProductUpdateRequest;
 import com.prj.flashdeal.domain.product.dto.request.StockAddRequest;
 import com.prj.flashdeal.domain.product.dto.response.ProductResponse;
+import com.prj.flashdeal.domain.product.dto.response.ProductResponseForUser;
 import com.prj.flashdeal.domain.product.dto.response.ProductSummaryResponse;
 import com.prj.flashdeal.domain.product.entity.Product;
+import com.prj.flashdeal.domain.product.entity.ProductStatus;
 import com.prj.flashdeal.domain.product.exception.ProductErrorCode;
 import com.prj.flashdeal.domain.product.exception.ProductException;
 import com.prj.flashdeal.domain.product.repository.ProductRepository;
@@ -86,6 +88,17 @@ public class ProductService {
         return new PageResponse<>(productRepository.searchProductsForUser(cond, pageable));
     }
 
+    @Transactional(readOnly = true)
+    public ProductResponseForUser getProductForUser(Long productId) {
+        Product product = getProduct(productId);
+
+        if (product.getStatus() != ProductStatus.ON_SALE && product.getStatus() != ProductStatus.SOLD_OUT) {
+            throw new ProductException(ProductErrorCode.PRODUCT_NOT_FOUND);
+        }
+
+        return ProductResponseForUser.from(product);
+    }
+
     // ---------------- private 헬퍼 메서드 ----------------
     private Product getProduct(Long productId) {
         Product product = productRepository.findById(productId)
@@ -97,6 +110,4 @@ public class ProductService {
 
         return product;
     }
-
-
 }
