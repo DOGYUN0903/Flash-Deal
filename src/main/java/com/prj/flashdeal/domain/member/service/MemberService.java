@@ -21,14 +21,25 @@ public class MemberService {
     @Transactional(readOnly = true)
     public MemberProfileResponse getMyProfile(Long userId) {
         // 1. 멤버 조회
-        Member member = memberRepository.findById(userId)
-            .orElseThrow(() -> new MemberException(MemberErrorCode.MEMBER_NOT_FOUND));
+        Member member = getMember(userId);
 
-        // 2. 멤버 상태가 '활동' 인지 확인(탈취된 토큰일수도 있으니까)
+        // 2. 멤버 상태가 '활동' 인지 확인
         if (member.getStatus() != MemberStatus.ACTIVE) {
             throw new MemberException(MemberErrorCode.INACTIVE_MEMBER);
         }
 
         return MemberProfileResponse.from(member);
+    }
+
+    @Transactional(readOnly = true)
+    public Member getMember(Long userId) {
+        Member member = memberRepository.findById(userId)
+            .orElseThrow(() -> new MemberException(MemberErrorCode.MEMBER_NOT_FOUND));
+
+        if (member.getIsDeleted()) {
+            throw new MemberException(MemberErrorCode.MEMBER_NOT_FOUND);
+        }
+
+        return member;
     }
 }

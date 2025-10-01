@@ -99,6 +99,18 @@ public class ProductService {
         return ProductResponseForUser.from(product);
     }
 
+    // ---------------- 다른 도메인과 통신을 위한 메서드 ----------------
+    @Transactional(readOnly = true)
+    public Product findCartableProduct(Long productId) {
+        Product product = getProduct(productId);
+
+        if (product.getStatus() != ProductStatus.ON_SALE) {
+            throw new ProductException(ProductErrorCode.PRODUCT_NOT_ON_SALE);
+        }
+
+        return product;
+    }
+
     // ---------------- private 헬퍼 메서드 ----------------
     private Product getProduct(Long productId) {
         Product product = productRepository.findById(productId)
