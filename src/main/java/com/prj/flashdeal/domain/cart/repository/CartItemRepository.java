@@ -8,6 +8,6 @@ import com.prj.flashdeal.domain.cart.entity.CartItem;
 import com.prj.flashdeal.domain.member.entity.Member;
 import com.prj.flashdeal.domain.product.entity.Product;
 
-public interface CartItemRepository extends JpaRepository<CartItem, Long> {
+public interface CartItemRepository extends JpaRepository<CartItem, Long>, CartItemRepositoryCustom {
     Optional<CartItem> findByMemberAndProduct(Member member, Product product);
 }
