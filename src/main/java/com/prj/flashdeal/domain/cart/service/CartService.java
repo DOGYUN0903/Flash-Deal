@@ -63,6 +63,16 @@ public class CartService {
         return CartItemResponse.from(cartItem);
     }
 
+    @Transactional
+    public void deleteCartItem(Long memberId, Long cartItemId) {
+        Member member = memberService.getMember(memberId);
+        CartItem cartItem = getCartItem(cartItemId);
+
+        validateCartItemOwner(cartItem, member);
+
+        cartItemRepository.delete(cartItem);
+    }
+
     // ---------------- private 헬퍼 메서드 ----------------
     private CartItem findOrCreateCartItem(Member member, Product product, int quantity) {
         return cartItemRepository.findByMemberAndProduct(member, product)

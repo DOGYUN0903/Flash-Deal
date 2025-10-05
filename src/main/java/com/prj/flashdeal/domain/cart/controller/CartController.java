@@ -3,6 +3,7 @@ package com.prj.flashdeal.domain.cart.controller;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -61,6 +62,20 @@ public class CartController {
             HttpStatus.OK,
             "장바구니 상품 수량이 수정되었습니다.",
             cartService.updateCartItemQuantity(userPrincipal.getUserId(), cartItemId, request)
+        );
+    }
+
+    @DeleteMapping("/{cartItemId}")
+    public ResponseEntity<ApiResponse<Void>> deleteCartItem(
+        @AuthenticationPrincipal UserPrincipal userPrincipal,
+        @PathVariable Long cartItemId
+    ) {
+        cartService.deleteCartItem(userPrincipal.getUserId(), cartItemId);
+
+        return ApiResponse.success(
+            HttpStatus.OK,
+            "장바구니 상품이 삭제되었습니다.",
+            null
         );
     }
 }
