@@ -73,6 +73,13 @@ public class CartService {
         cartItemRepository.delete(cartItem);
     }
 
+    @Transactional
+    public void clearCart(Long memberId) {
+        Member member = memberService.getMember(memberId);
+
+        cartItemRepository.deleteAllByMember(member);
+    }
+
     // ---------------- private 헬퍼 메서드 ----------------
     private CartItem findOrCreateCartItem(Member member, Product product, int quantity) {
         return cartItemRepository.findByMemberAndProduct(member, product)

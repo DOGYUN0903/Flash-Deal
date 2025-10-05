@@ -78,4 +78,17 @@ public class CartController {
             null
         );
     }
+
+    @DeleteMapping
+    public ResponseEntity<ApiResponse<Void>> clearCart(
+        @AuthenticationPrincipal UserPrincipal userPrincipal
+    ) {
+        cartService.clearCart(userPrincipal.getUserId());
+
+        return ApiResponse.success(
+            HttpStatus.OK,
+            "장바구니가 비워졌습니다.",
+            null
+        );
+    }
 }
