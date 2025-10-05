@@ -4,12 +4,15 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.prj.flashdeal.domain.cart.dto.request.CartItemAddRequest;
+import com.prj.flashdeal.domain.cart.dto.request.CartItemUpdateRequest;
 import com.prj.flashdeal.domain.cart.dto.response.CartItemResponse;
 import com.prj.flashdeal.domain.cart.dto.response.CartResponse;
 import com.prj.flashdeal.domain.cart.service.CartService;
@@ -45,6 +48,19 @@ public class CartController {
             HttpStatus.OK,
             "장바구니 조회가 완료되었습니다.",
             cartService.getCartItems(userPrincipal.getUserId())
+        );
+    }
+
+    @PatchMapping("/{cartItemId}")
+    public ResponseEntity<ApiResponse<CartItemResponse>> updateCartItemQuantity(
+        @AuthenticationPrincipal UserPrincipal userPrincipal,
+        @PathVariable Long cartItemId,
+        @Valid @RequestBody CartItemUpdateRequest request
+    ) {
+        return ApiResponse.success(
+            HttpStatus.OK,
+            "장바구니 상품 수량이 수정되었습니다.",
+            cartService.updateCartItemQuantity(userPrincipal.getUserId(), cartItemId, request)
         );
     }
 }

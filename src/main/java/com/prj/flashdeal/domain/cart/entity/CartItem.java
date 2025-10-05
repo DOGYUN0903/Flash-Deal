@@ -63,4 +63,11 @@ public class CartItem extends BaseTimeEntity {
     public int calculateItemTotalPrice() {
         return this.price * this.quantity;
     }
+
+    public void updateQuantity(int quantity) {
+        if (quantity <= 0) {
+            throw new CartException(CartErrorCode.INVALID_QUANTITY);
+        }
+        this.quantity = quantity;
+    }
 }
