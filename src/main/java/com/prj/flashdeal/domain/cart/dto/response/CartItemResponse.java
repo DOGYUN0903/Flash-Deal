@@ -3,7 +3,7 @@ package com.prj.flashdeal.domain.cart.dto.response;
 import com.prj.flashdeal.domain.cart.entity.CartItem;
 
 public record CartItemResponse(
-    Long CartItemId,
+    Long cartItemId,
     Long productId,
     String productName,
     int price,
