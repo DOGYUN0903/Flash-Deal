@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.prj.flashdeal.domain.order.dto.request.DirectOrderRequest;
 import com.prj.flashdeal.domain.order.dto.request.OrderCreateRequest;
 import com.prj.flashdeal.domain.order.dto.response.OrderResponse;
 import com.prj.flashdeal.domain.order.dto.response.OrderSummaryResponse;
@@ -32,17 +33,32 @@ public class OrderController {
     private final OrderService orderService;
 
     /**
-     * 주문 생성
+     * 장바구니에서 주문 생성
      */
-    @PostMapping
-    public ResponseEntity<ApiResponse<OrderResponse>> createOrder(
+    @PostMapping("/from-cart")
+    public ResponseEntity<ApiResponse<OrderResponse>> createOrderFromCart(
         @AuthenticationPrincipal UserPrincipal userPrincipal,
         @Valid @RequestBody OrderCreateRequest request
     ) {
         return ApiResponse.success(
             HttpStatus.CREATED,
             "주문이 생성되었습니다.",
-            orderService.createOrder(userPrincipal.getUserId(), request)
+            orderService.createOrderFromCart(userPrincipal.getUserId(), request)
+        );
+    }
+
+    /**
+     * 바로 구매 (장바구니 거치지 않음)
+     */
+    @PostMapping("/direct")
+    public ResponseEntity<ApiResponse<OrderResponse>> createDirectOrder(
+        @AuthenticationPrincipal UserPrincipal userPrincipal,
+        @Valid @RequestBody DirectOrderRequest request
+    ) {
+        return ApiResponse.success(
+            HttpStatus.CREATED,
+            "바로 구매가 완료되었습니다.",
+            orderService.createDirectOrder(userPrincipal.getUserId(), request)
         );
     }
 

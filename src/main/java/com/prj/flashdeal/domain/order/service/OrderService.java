@@ -11,6 +11,7 @@ import com.prj.flashdeal.domain.cart.entity.CartItem;
 import com.prj.flashdeal.domain.cart.service.CartService;
 import com.prj.flashdeal.domain.member.entity.Member;
 import com.prj.flashdeal.domain.member.service.MemberService;
+import com.prj.flashdeal.domain.order.dto.request.DirectOrderRequest;
 import com.prj.flashdeal.domain.order.dto.request.OrderCreateRequest;
 import com.prj.flashdeal.domain.order.dto.response.OrderResponse;
 import com.prj.flashdeal.domain.order.dto.response.OrderSummaryResponse;
@@ -39,7 +40,7 @@ public class OrderService {
      * 주문 생성 (장바구니 → 주문 전환)
      */
     @Transactional
-    public OrderResponse createOrder(Long memberId, OrderCreateRequest request) {
+    public OrderResponse createOrderFromCart(Long memberId, OrderCreateRequest request) {
         Member member = memberService.getMember(memberId);
 
         // 장바구니 조회
@@ -77,6 +78,41 @@ public class OrderService {
 
         // 장바구니 비우기
         cartService.clearCartForOrder(member);
+
+        return OrderResponse.from(savedOrder);
+    }
+
+    /**
+     * 바로 구매 (장바구니 거치지 않고 즉시 주문)
+     */
+    @Transactional
+    public OrderResponse createDirectOrder(Long memberId, DirectOrderRequest request) {
+        Member member = memberService.getMember(memberId);
+
+        // 상품 조회 및 검증
+        Product product = productService.findCartableProduct(request.getProductId());
+
+        // 배송지 정보 생성
+        DeliveryAddress deliveryAddress = DeliveryAddress.of(
+            request.getRecipientName(),
+            request.getPhoneNumber(),
+            request.getZipcode(),
+            request.getStreet(),
+            request.getDetail()
+        );
+
+        // 주문 생성
+        Order order = Order.createOrder(member, deliveryAddress);
+
+        // 재고 감소
+        productService.decreaseStock(product.getId(), request.getQuantity());
+
+        // 주문 항목 생성
+        OrderItem orderItem = OrderItem.createOrderItem(product, request.getQuantity());
+        order.addOrderItem(orderItem);
+
+        // 주문 저장
+        Order savedOrder = orderRepository.save(order);
 
         return OrderResponse.from(savedOrder);
     }
