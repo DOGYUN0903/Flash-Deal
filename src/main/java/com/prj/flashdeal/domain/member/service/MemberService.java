@@ -1,9 +1,13 @@
 package com.prj.flashdeal.domain.member.service;
 
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.prj.flashdeal.domain.member.dto.request.MemberUpdateRequest;
+import com.prj.flashdeal.domain.member.dto.request.PasswordChangeRequest;
 import com.prj.flashdeal.domain.member.dto.response.MemberProfileResponse;
+import com.prj.flashdeal.domain.member.entity.Address;
 import com.prj.flashdeal.domain.member.entity.Member;
 import com.prj.flashdeal.domain.member.entity.MemberStatus;
 import com.prj.flashdeal.domain.member.exception.MemberErrorCode;
@@ -17,6 +21,7 @@ import lombok.RequiredArgsConstructor;
 public class MemberService {
 
     private final MemberRepository memberRepository;
+    private final PasswordEncoder passwordEncoder;
 
     @Transactional(readOnly = true)
     public MemberProfileResponse getMyProfile(Long userId) {
@@ -41,5 +46,40 @@ public class MemberService {
         }
 
         return member;
+    }
+
+    /**
+     * 회원 정보 수정
+     */
+    @Transactional
+    public MemberProfileResponse updateMemberInfo(Long userId, MemberUpdateRequest request) {
+        Member member = getMember(userId);
+
+        Address newAddress = Address.of(
+            request.getZipcode(),
+            request.getStreet(),
+            request.getDetail()
+        );
+
+        member.updateInfo(request.getName(), newAddress, request.getPhoneNumber());
+
+        return MemberProfileResponse.from(member);
+    }
+
+    /**
+     * 비밀번호 변경
+     */
+    @Transactional
+    public void changePassword(Long userId, PasswordChangeRequest request) {
+        Member member = getMember(userId);
+
+        // 현재 비밀번호 확인
+        if (!passwordEncoder.matches(request.getCurrentPassword(), member.getPassword())) {
+            throw new MemberException(MemberErrorCode.INVALID_PASSWORD);
+        }
+
+        // 새 비밀번호 암호화 후 저장
+        String encodedPassword = passwordEncoder.encode(request.getNewPassword());
+        member.changePassword(encodedPassword);
     }
 }
