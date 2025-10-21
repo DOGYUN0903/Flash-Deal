@@ -80,6 +80,22 @@ public class CartService {
         cartItemRepository.deleteAllByMember(member);
     }
 
+    /**
+     * 주문 생성용: 회원의 장바구니 항목 조회
+     */
+    @Transactional(readOnly = true)
+    public List<CartItem> getCartItemsForOrder(Member member) {
+        return cartItemRepository.findByMember(member);
+    }
+
+    /**
+     * 주문 생성용: 장바구니 비우기
+     */
+    @Transactional
+    public void clearCartForOrder(Member member) {
+        cartItemRepository.deleteAllByMember(member);
+    }
+
     // ---------------- private 헬퍼 메서드 ----------------
     private CartItem findOrCreateCartItem(Member member, Product product, int quantity) {
         return cartItemRepository.findByMemberAndProduct(member, product)
