@@ -66,4 +66,20 @@ public class Member extends BaseEntity {
         this.role = Role.USER;
         this.status = MemberStatus.ACTIVE;
     }
+
+    /**
+     * 회원 정보 수정
+     */
+    public void updateInfo(String name, Address address, String phoneNumber) {
+        this.name = name;
+        this.address = address;
+        this.phoneNumber = phoneNumber;
+    }
+
+    /**
+     * 비밀번호 변경
+     */
+    public void changePassword(String newPassword) {
+        this.password = newPassword;
+    }
 }

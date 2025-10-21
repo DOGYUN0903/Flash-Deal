@@ -111,6 +111,24 @@ public class ProductService {
         return product;
     }
 
+    /**
+     * 재고 감소 (주문 생성용)
+     */
+    @Transactional
+    public void decreaseStock(Long productId, int quantity) {
+        Product product = getProduct(productId);
+        product.removeStock(quantity);
+    }
+
+    /**
+     * 재고 복구 (주문 취소용)
+     */
+    @Transactional
+    public void increaseStock(Long productId, int quantity) {
+        Product product = getProduct(productId);
+        product.addStock(quantity);
+    }
+
     // ---------------- private 헬퍼 메서드 ----------------
     private Product getProduct(Long productId) {
         Product product = productRepository.findById(productId)

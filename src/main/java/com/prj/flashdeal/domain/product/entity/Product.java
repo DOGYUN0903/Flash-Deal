@@ -72,6 +72,20 @@ public class Product extends BaseEntity {
         }
     }
 
+    public void removeStock(Integer quantity) {
+        if (quantity <= 0) {
+            throw new ProductException(ProductErrorCode.INVALID_STOCK_QUANTITY);
+        }
+        if (this.stockQuantity < quantity) {
+            throw new ProductException(ProductErrorCode.INVALID_STOCK_QUANTITY);
+        }
+        this.stockQuantity -= quantity;
+
+        if (this.stockQuantity == 0) {
+            this.status = ProductStatus.SOLD_OUT;
+        }
+    }
+
     public void updateInfo(String name, String description, Integer price) {
         if (name != null){
             if (name.isBlank()) {
