@@ -17,7 +17,8 @@ public enum PaymentErrorCode implements ErrorCode {
     INVALID_PAYMENT_STATUS("잘못된 결제 상태입니다.", HttpStatus.BAD_REQUEST),
     PAYMENT_AMOUNT_MISMATCH("결제 금액이 일치하지 않습니다.", HttpStatus.BAD_REQUEST),
     ORDER_NOT_FOUND("주문을 찾을 수 없습니다.", HttpStatus.NOT_FOUND),
-    UNAUTHORIZED_ORDER("본인의 주문만 접근할 수 있습니다.", HttpStatus.FORBIDDEN);
+    UNAUTHORIZED_ORDER("본인의 주문만 접근할 수 있습니다.", HttpStatus.FORBIDDEN),
+    MOCK_PAYMENT_FAILED("결제 처리 중 오류가 발생했습니다.", HttpStatus.INTERNAL_SERVER_ERROR);
 
     private final String message;
     private final HttpStatus status;
