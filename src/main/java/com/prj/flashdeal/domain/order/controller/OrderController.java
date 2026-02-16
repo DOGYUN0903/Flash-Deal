@@ -20,7 +20,7 @@ import com.prj.flashdeal.domain.order.dto.response.OrderSummaryResponse;
 import com.prj.flashdeal.domain.order.service.OrderService;
 import com.prj.flashdeal.global.response.ApiResponse;
 import com.prj.flashdeal.global.response.PageResponse;
-import com.prj.flashdeal.global.security.dto.UserPrincipal;
+import com.prj.flashdeal.global.security.CustomUserDetails;
 
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -37,7 +37,7 @@ public class OrderController {
      */
     @PostMapping("/from-cart")
     public ResponseEntity<ApiResponse<OrderResponse>> createOrderFromCart(
-        @AuthenticationPrincipal UserPrincipal userPrincipal,
+        @AuthenticationPrincipal CustomUserDetails userPrincipal,
         @Valid @RequestBody OrderCreateRequest request
     ) {
         return ApiResponse.success(
@@ -52,7 +52,7 @@ public class OrderController {
      */
     @PostMapping("/direct")
     public ResponseEntity<ApiResponse<OrderResponse>> createDirectOrder(
-        @AuthenticationPrincipal UserPrincipal userPrincipal,
+        @AuthenticationPrincipal CustomUserDetails userPrincipal,
         @Valid @RequestBody DirectOrderRequest request
     ) {
         return ApiResponse.success(
@@ -67,7 +67,7 @@ public class OrderController {
      */
     @GetMapping("/{orderId}")
     public ResponseEntity<ApiResponse<OrderResponse>> getOrder(
-        @AuthenticationPrincipal UserPrincipal userPrincipal,
+        @AuthenticationPrincipal CustomUserDetails userPrincipal,
         @PathVariable Long orderId
     ) {
         return ApiResponse.success(
@@ -82,7 +82,7 @@ public class OrderController {
      */
     @GetMapping
     public ResponseEntity<ApiResponse<PageResponse<OrderSummaryResponse>>> getOrders(
-        @AuthenticationPrincipal UserPrincipal userPrincipal,
+        @AuthenticationPrincipal CustomUserDetails userPrincipal,
         @PageableDefault(size = 10) Pageable pageable
     ) {
         return ApiResponse.success(
@@ -97,7 +97,7 @@ public class OrderController {
      */
     @DeleteMapping("/{orderId}")
     public ResponseEntity<ApiResponse<Void>> cancelOrder(
-        @AuthenticationPrincipal UserPrincipal userPrincipal,
+        @AuthenticationPrincipal CustomUserDetails userPrincipal,
         @PathVariable Long orderId
     ) {
         orderService.cancelOrder(userPrincipal.getUserId(), orderId);

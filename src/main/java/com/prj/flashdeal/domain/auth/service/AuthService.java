@@ -1,20 +1,27 @@
 package com.prj.flashdeal.domain.auth.service;
 
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContext;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.prj.flashdeal.domain.auth.dto.request.LoginRequest;
 import com.prj.flashdeal.domain.auth.dto.request.SignupRequest;
-import com.prj.flashdeal.domain.auth.dto.response.TokenResponse;
+import com.prj.flashdeal.domain.auth.dto.response.LoginResponse;
 import com.prj.flashdeal.domain.member.entity.Address;
 import com.prj.flashdeal.domain.member.entity.Member;
-import com.prj.flashdeal.domain.member.entity.MemberStatus;
 import com.prj.flashdeal.domain.member.exception.MemberErrorCode;
 import com.prj.flashdeal.domain.member.exception.MemberException;
 import com.prj.flashdeal.domain.member.repository.MemberRepository;
-import com.prj.flashdeal.global.security.JwtUtil;
 
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpSession;
 import lombok.RequiredArgsConstructor;
 
 @Service
@@ -23,20 +30,17 @@ public class AuthService {
 
     private final MemberRepository memberRepository;
     private final PasswordEncoder passwordEncoder;
-    private final JwtUtil jwtUtil;
+    private final AuthenticationManager authenticationManager;
 
     @Transactional
-    public TokenResponse signup(SignupRequest request) {
+    public LoginResponse signup(SignupRequest request) {
 
-        // 1. 이메일 중복 확인
         if (memberRepository.existsByEmail(request.getEmail())) {
             throw new MemberException(MemberErrorCode.ALREADY_EXISTS_EMAIL);
         }
 
-        // 2. 비밀번호 암호화
         String encodePassword = passwordEncoder.encode(request.getPassword());
 
-        // 3. 멤버 객체 생성
         Member member = Member.builder()
             .email(request.getEmail())
             .password(encodePassword)
@@ -51,47 +55,48 @@ public class AuthService {
             .phoneNumber(request.getPhoneNumber())
             .build();
 
-        // 4. 멤버 DB 저장
         Member savedMember = memberRepository.save(member);
 
-        // 5. 토큰 생성
-        String accessToken = jwtUtil.createToken(
-            savedMember.getId(),
-            savedMember.getEmail(),
-            savedMember.getName(),
-            savedMember.getRole()
-        );
-
-        // 6. 결과 반환
-        return TokenResponse.of(accessToken);
+        return LoginResponse.of(savedMember.getId(), savedMember.getEmail(), savedMember.getName());
     }
 
     @Transactional(readOnly = true)
-    public TokenResponse login(LoginRequest request) {
+    public LoginResponse login(LoginRequest request, HttpServletRequest httpRequest) {
 
-        // 1. 이메일을 활용하여 멤버 찾기
-        Member member = memberRepository.findByEmail(request.getEmail())
-            .orElseThrow(() -> new MemberException(MemberErrorCode.MEMBER_NOT_FOUND));
+        try {
+            // 1. AuthenticationManager → CustomUserDetailsService → BCrypt 비밀번호 검증
+            Authentication authentication = authenticationManager.authenticate(
+                new UsernamePasswordAuthenticationToken(request.getEmail(), request.getPassword())
+            );
 
-        // 2. 멤버 상태가 '활동'인지 확인
-        if (member.getStatus() != MemberStatus.ACTIVE) {
-            throw new MemberException(MemberErrorCode.INACTIVE_MEMBER);
-        }
+            // 2. SecurityContext 설정
+            SecurityContext context = SecurityContextHolder.createEmptyContext();
+            context.setAuthentication(authentication);
+            SecurityContextHolder.setContext(context);
 
-        // 3. 비밀번호가 일치하는지 확인
-        if (!passwordEncoder.matches(request.getPassword(), member.getPassword())) {
+            // 3. HttpSession에 SecurityContext 저장 → JSESSIONID 쿠키 자동 발급
+            HttpSession session = httpRequest.getSession(true);
+            session.setAttribute(
+                HttpSessionSecurityContextRepository.SPRING_SECURITY_CONTEXT_KEY,
+                context
+            );
+
+        } catch (BadCredentialsException e) {
             throw new MemberException(MemberErrorCode.INVALID_PASSWORD);
         }
 
-        // 4. 토큰 생성
-        String accessToken = jwtUtil.createToken(
-            member.getId(),
-            member.getEmail(),
-            member.getName(),
-            member.getRole()
-        );
+        // 4. 응답 반환
+        Member member = memberRepository.findByEmail(request.getEmail())
+            .orElseThrow(() -> new MemberException(MemberErrorCode.MEMBER_NOT_FOUND));
 
-        // 5. 결과 반환
-        return TokenResponse.of(accessToken);
+        return LoginResponse.of(member.getId(), member.getEmail(), member.getName());
+    }
+
+    public void logout(HttpServletRequest request) {
+        HttpSession session = request.getSession(false);
+        if (session != null) {
+            session.invalidate();
+        }
+        SecurityContextHolder.clearContext();
     }
 }

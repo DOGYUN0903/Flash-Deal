@@ -18,7 +18,7 @@ import com.prj.flashdeal.domain.cart.dto.response.CartItemResponse;
 import com.prj.flashdeal.domain.cart.dto.response.CartResponse;
 import com.prj.flashdeal.domain.cart.service.CartService;
 import com.prj.flashdeal.global.response.ApiResponse;
-import com.prj.flashdeal.global.security.dto.UserPrincipal;
+import com.prj.flashdeal.global.security.CustomUserDetails;
 
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -32,7 +32,7 @@ public class CartController {
 
     @PostMapping
     public ResponseEntity<ApiResponse<CartItemResponse>> addCartItem(
-        @AuthenticationPrincipal UserPrincipal userPrincipal,
+        @AuthenticationPrincipal CustomUserDetails userPrincipal,
         @Valid @RequestBody CartItemAddRequest request
     ) {
         return ApiResponse.success(
@@ -44,7 +44,7 @@ public class CartController {
 
     @GetMapping
     public ResponseEntity<ApiResponse<CartResponse>> getCartItems(
-        @AuthenticationPrincipal UserPrincipal userPrincipal) {
+        @AuthenticationPrincipal CustomUserDetails userPrincipal) {
         return ApiResponse.success(
             HttpStatus.OK,
             "장바구니 조회가 완료되었습니다.",
@@ -54,7 +54,7 @@ public class CartController {
 
     @PatchMapping("/{cartItemId}")
     public ResponseEntity<ApiResponse<CartItemResponse>> updateCartItemQuantity(
-        @AuthenticationPrincipal UserPrincipal userPrincipal,
+        @AuthenticationPrincipal CustomUserDetails userPrincipal,
         @PathVariable Long cartItemId,
         @Valid @RequestBody CartItemUpdateRequest request
     ) {
@@ -67,7 +67,7 @@ public class CartController {
 
     @DeleteMapping("/{cartItemId}")
     public ResponseEntity<ApiResponse<Void>> deleteCartItem(
-        @AuthenticationPrincipal UserPrincipal userPrincipal,
+        @AuthenticationPrincipal CustomUserDetails userPrincipal,
         @PathVariable Long cartItemId
     ) {
         cartService.deleteCartItem(userPrincipal.getUserId(), cartItemId);
@@ -81,7 +81,7 @@ public class CartController {
 
     @DeleteMapping
     public ResponseEntity<ApiResponse<Void>> clearCart(
-        @AuthenticationPrincipal UserPrincipal userPrincipal
+        @AuthenticationPrincipal CustomUserDetails userPrincipal
     ) {
         cartService.clearCart(userPrincipal.getUserId());
 

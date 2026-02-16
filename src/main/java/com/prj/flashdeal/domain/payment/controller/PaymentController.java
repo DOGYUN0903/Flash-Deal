@@ -15,7 +15,7 @@ import com.prj.flashdeal.domain.payment.dto.request.PaymentRequest;
 import com.prj.flashdeal.domain.payment.dto.response.PaymentResponse;
 import com.prj.flashdeal.domain.payment.service.PaymentService;
 import com.prj.flashdeal.global.response.ApiResponse;
-import com.prj.flashdeal.global.security.dto.UserPrincipal;
+import com.prj.flashdeal.global.security.CustomUserDetails;
 
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -32,7 +32,7 @@ public class PaymentController {
      */
     @PostMapping
     public ResponseEntity<ApiResponse<PaymentResponse>> processPayment(
-        @AuthenticationPrincipal UserPrincipal userPrincipal,
+        @AuthenticationPrincipal CustomUserDetails userPrincipal,
         @Valid @RequestBody PaymentRequest request
     ) {
         return ApiResponse.success(
@@ -47,7 +47,7 @@ public class PaymentController {
      */
     @GetMapping("/{paymentId}")
     public ResponseEntity<ApiResponse<PaymentResponse>> getPayment(
-        @AuthenticationPrincipal UserPrincipal userPrincipal,
+        @AuthenticationPrincipal CustomUserDetails userPrincipal,
         @PathVariable Long paymentId
     ) {
         return ApiResponse.success(
@@ -62,7 +62,7 @@ public class PaymentController {
      */
     @GetMapping
     public ResponseEntity<ApiResponse<PaymentResponse>> getPaymentByOrderId(
-        @AuthenticationPrincipal UserPrincipal userPrincipal,
+        @AuthenticationPrincipal CustomUserDetails userPrincipal,
         @RequestParam Long orderId
     ) {
         return ApiResponse.success(
@@ -77,7 +77,7 @@ public class PaymentController {
      */
     @PostMapping("/{paymentId}/refund")
     public ResponseEntity<ApiResponse<Void>> refundPayment(
-        @AuthenticationPrincipal UserPrincipal userPrincipal,
+        @AuthenticationPrincipal CustomUserDetails userPrincipal,
         @PathVariable Long paymentId
     ) {
         paymentService.refundPayment(userPrincipal.getUserId(), paymentId);

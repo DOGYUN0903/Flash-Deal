@@ -2,15 +2,15 @@ package com.prj.flashdeal.global.security;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
+import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
-import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
-import org.springframework.web.cors.CorsConfigurationSource;
-
 
 import lombok.RequiredArgsConstructor;
 
@@ -19,27 +19,33 @@ import lombok.RequiredArgsConstructor;
 @EnableWebSecurity
 public class SecurityConfig {
 
-    private final JwtFilter jwtFilter;
-    private final CorsConfigurationSource corsConfigurationSource;
     private final CustomAccessDeniedHandler customAccessDeniedHandler;
     private final CustomAuthenticationEntryPoint customAuthenticationEntryPoint;
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         return http
-            .cors(cors -> cors.configurationSource(corsConfigurationSource)) // cors 설정
-            .csrf(AbstractHttpConfigurer::disable)  // .csrf().disable() 방식은 더 이상 사용 안함.
-            .httpBasic(AbstractHttpConfigurer::disable) // BasicAuthenticationFilter 비활성화
-            .formLogin(AbstractHttpConfigurer::disable) // UsernamePasswordAuthenticationFilter, DefaultLoginPageGeneratingFilter 비활성화
+            .csrf(AbstractHttpConfigurer::disable)
+            .httpBasic(AbstractHttpConfigurer::disable)
+            .formLogin(AbstractHttpConfigurer::disable)
 
-            .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class)
+            .sessionManagement(session -> session
+                .sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED)
+            )
 
             .exceptionHandling(ex -> ex
                 .authenticationEntryPoint(customAuthenticationEntryPoint)
                 .accessDeniedHandler(customAccessDeniedHandler))
 
             .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/api/auth/login", "/api/auth/signup", "/swagger-ui/**", "/v3/api-docs/**").permitAll() // Swagger 접근 허용
+                .requestMatchers(
+                    "/api/auth/login",
+                    "/api/auth/signup",
+                    "/api/auth/logout",
+                    "/swagger-ui/**",
+                    "/v3/api-docs/**",
+                    "/actuator/**"
+                ).permitAll()
                 .requestMatchers("/api/admin/**").hasRole("ADMIN")
                 .anyRequest().authenticated()
             )
@@ -50,5 +56,11 @@ public class SecurityConfig {
     @Bean
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
+    }
+
+    @Bean
+    public AuthenticationManager authenticationManager(
+            AuthenticationConfiguration authenticationConfiguration) throws Exception {
+        return authenticationConfiguration.getAuthenticationManager();
     }
 }

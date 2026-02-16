@@ -14,7 +14,7 @@ import com.prj.flashdeal.domain.member.dto.request.PasswordChangeRequest;
 import com.prj.flashdeal.domain.member.dto.response.MemberProfileResponse;
 import com.prj.flashdeal.domain.member.service.MemberService;
 import com.prj.flashdeal.global.response.ApiResponse;
-import com.prj.flashdeal.global.security.dto.UserPrincipal;
+import com.prj.flashdeal.global.security.CustomUserDetails;
 
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -31,7 +31,7 @@ public class MemberController {
      */
     @GetMapping("/me")
     public ResponseEntity<ApiResponse<MemberProfileResponse>> getMyProfile(
-        @AuthenticationPrincipal UserPrincipal userPrincipal
+        @AuthenticationPrincipal CustomUserDetails userPrincipal
     ) {
         return ApiResponse.success(
             HttpStatus.OK,
@@ -45,7 +45,7 @@ public class MemberController {
      */
     @PatchMapping("/me")
     public ResponseEntity<ApiResponse<MemberProfileResponse>> updateMemberInfo(
-        @AuthenticationPrincipal UserPrincipal userPrincipal,
+        @AuthenticationPrincipal CustomUserDetails userPrincipal,
         @Valid @RequestBody MemberUpdateRequest request
     ) {
         return ApiResponse.success(
@@ -60,7 +60,7 @@ public class MemberController {
      */
     @PatchMapping("/me/password")
     public ResponseEntity<ApiResponse<Void>> changePassword(
-        @AuthenticationPrincipal UserPrincipal userPrincipal,
+        @AuthenticationPrincipal CustomUserDetails userPrincipal,
         @Valid @RequestBody PasswordChangeRequest request
     ) {
         memberService.changePassword(userPrincipal.getUserId(), request);
