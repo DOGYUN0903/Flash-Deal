@@ -8,7 +8,8 @@ public record MemberProfileResponse(
     String email,
     String name,
     Address address,
-    String phoneNumber
+    String phoneNumber,
+    Long balance
 ) {
     public static MemberProfileResponse from(Member member) {
         return new MemberProfileResponse(
@@ -16,7 +17,8 @@ public record MemberProfileResponse(
             member.getEmail(),
             member.getName(),
             member.getAddress(),
-            member.getPhoneNumber()
+            member.getPhoneNumber(),
+            member.getBalance()
         );
     }
 }
