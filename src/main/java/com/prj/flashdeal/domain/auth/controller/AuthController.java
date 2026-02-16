@@ -13,7 +13,6 @@ import com.prj.flashdeal.domain.auth.dto.response.LoginResponse;
 import com.prj.flashdeal.domain.auth.service.AuthService;
 import com.prj.flashdeal.global.response.ApiResponse;
 
-import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 
@@ -34,19 +33,8 @@ public class AuthController {
     }
 
     @PostMapping("/login")
-    public ResponseEntity<ApiResponse<LoginResponse>> login(
-            @Valid @RequestBody LoginRequest request,
-            HttpServletRequest httpRequest) {
-        return ApiResponse.success(
-            HttpStatus.OK,
-            "로그인이 완료되었습니다.",
-            authService.login(request, httpRequest)
-        );
-    }
-
-    @PostMapping("/logout")
-    public ResponseEntity<ApiResponse<Void>> logout(HttpServletRequest request) {
-        authService.logout(request);
-        return ApiResponse.success(HttpStatus.OK, "로그아웃이 완료되었습니다.", null);
+    public ResponseEntity<ApiResponse<Void>> login(@Valid @RequestBody LoginRequest request) {
+        authService.login(request);
+        return ApiResponse.success(HttpStatus.OK, "로그인이 완료되었습니다.", null);
     }
 }

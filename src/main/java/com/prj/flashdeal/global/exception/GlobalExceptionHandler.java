@@ -3,6 +3,7 @@ package com.prj.flashdeal.global.exception;
 import org.springframework.context.support.DefaultMessageSourceResolvable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.AuthenticationException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -29,6 +30,12 @@ public class GlobalExceptionHandler {
             .orElse("잘못된 요청입니다.");
 
         return ApiResponse.error(HttpStatus.BAD_REQUEST, errorMessage);
+    }
+
+    // 인증 실패 예외 처리 (로그인 실패 등)
+    @ExceptionHandler(AuthenticationException.class)
+    protected ResponseEntity<ApiResponse<Void>> handleAuthenticationException(AuthenticationException e) {
+        return ApiResponse.error(HttpStatus.UNAUTHORIZED, "아이디 또는 비밀번호가 올바르지 않습니다.");
     }
 
     // 2. 그 외 모든 예외 처리 (최후의 보루)
