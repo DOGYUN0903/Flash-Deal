@@ -4,12 +4,18 @@ import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Getter;
+import lombok.NoArgsConstructor;
 
 /**
  * 바로 구매 요청 DTO
  */
 @Getter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
 public class DirectOrderRequest {
 
     @NotNull(message = "상품 ID는 필수입니다.")
