@@ -33,8 +33,11 @@ public class AuthController {
     }
 
     @PostMapping("/login")
-    public ResponseEntity<ApiResponse<Void>> login(@Valid @RequestBody LoginRequest request) {
-        authService.login(request);
-        return ApiResponse.success(HttpStatus.OK, "로그인이 완료되었습니다.", null);
+    public ResponseEntity<ApiResponse<LoginResponse>> login(@Valid @RequestBody LoginRequest request) {
+        return ApiResponse.success(
+            HttpStatus.OK,
+            "로그인이 완료되었습니다.",
+            authService.login(request)
+        );
     }
 }

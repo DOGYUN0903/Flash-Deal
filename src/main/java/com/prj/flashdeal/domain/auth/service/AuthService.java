@@ -16,6 +16,7 @@ import com.prj.flashdeal.domain.member.entity.Member;
 import com.prj.flashdeal.domain.member.exception.MemberErrorCode;
 import com.prj.flashdeal.domain.member.exception.MemberException;
 import com.prj.flashdeal.domain.member.repository.MemberRepository;
+import com.prj.flashdeal.global.security.CustomUserDetails;
 
 import lombok.RequiredArgsConstructor;
 
@@ -52,10 +53,10 @@ public class AuthService {
 
         Member savedMember = memberRepository.save(member);
 
-        return LoginResponse.of(savedMember.getId(), savedMember.getEmail(), savedMember.getName());
+        return LoginResponse.of(savedMember.getId(), savedMember.getName(), savedMember.getRole());
     }
 
-    public void login(LoginRequest request) {
+    public LoginResponse login(LoginRequest request) {
         // 1. 인증 처리
         Authentication authentication = authenticationManager.authenticate(
             new UsernamePasswordAuthenticationToken(request.getEmail(), request.getPassword())
@@ -63,5 +64,9 @@ public class AuthService {
 
         // 2. SecurityContext에 저장 (requireExplicitSave=false → 세션 자동 저장)
         SecurityContextHolder.getContext().setAuthentication(authentication);
+
+        // 3. 인증된 사용자 정보 반환
+        CustomUserDetails userDetails = (CustomUserDetails) authentication.getPrincipal();
+        return LoginResponse.of(userDetails.getUserId(), userDetails.getName(), userDetails.getUserRole());
     }
 }

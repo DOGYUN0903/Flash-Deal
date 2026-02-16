@@ -19,12 +19,14 @@ public class CustomUserDetails implements UserDetails {
     private final Role userRole;
     private final String email;
     private final String password;
+    private final String name;
 
-    public CustomUserDetails(Long userId, Role userRole, String email, String password) {
+    public CustomUserDetails(Long userId, Role userRole, String email, String password, String name) {
         this.userId = userId;
         this.userRole = userRole;
         this.email = email;
         this.password = password;
+        this.name = name;
     }
 
     public static CustomUserDetails from(Member member) {
@@ -32,7 +34,8 @@ public class CustomUserDetails implements UserDetails {
             member.getId(),
             member.getRole(),
             member.getEmail(),
-            member.getPassword()
+            member.getPassword(),
+            member.getName()
         );
     }
 
