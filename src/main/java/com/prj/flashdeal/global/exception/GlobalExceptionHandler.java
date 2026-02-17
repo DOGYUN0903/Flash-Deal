@@ -10,6 +10,9 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 import com.prj.flashdeal.global.response.ApiResponse;
 
+import lombok.extern.slf4j.Slf4j;
+
+@Slf4j
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
@@ -41,6 +44,7 @@ public class GlobalExceptionHandler {
     // 2. 그 외 모든 예외 처리 (최후의 보루)
     @ExceptionHandler(Exception.class)
     protected ResponseEntity<ApiResponse<Void>> handleException(Exception e) {
+        log.error("Unhandled exception occurred", e);
         return ApiResponse.error(HttpStatus.INTERNAL_SERVER_ERROR, "서버 내에서 오류가 발생하였습니다.");
     }
 }
