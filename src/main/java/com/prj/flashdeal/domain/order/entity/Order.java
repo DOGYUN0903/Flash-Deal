@@ -11,7 +11,6 @@ import com.prj.flashdeal.global.entity.BaseTimeEntity;
 
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
-import jakarta.persistence.Embedded;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
@@ -54,9 +53,6 @@ public class Order extends BaseTimeEntity {
     @Column(nullable = false)
     private OrderStatus status;
 
-    @Embedded
-    private DeliveryAddress deliveryAddress;
-
     @Column(nullable = false)
     private Integer totalPrice;
 
@@ -64,9 +60,8 @@ public class Order extends BaseTimeEntity {
     private Long dealId;
 
     @Builder
-    private Order(Member member, DeliveryAddress deliveryAddress, Long dealId) {
+    private Order(Member member, Long dealId) {
         this.member = member;
-        this.deliveryAddress = deliveryAddress;
         this.dealId = dealId;
         this.status = OrderStatus.PENDING;
         this.totalPrice = 0;
@@ -75,10 +70,9 @@ public class Order extends BaseTimeEntity {
     /**
      * 주문 생성 정적 팩토리 메서드
      */
-    public static Order createOrder(Member member, DeliveryAddress deliveryAddress) {
+    public static Order createOrder(Member member) {
         return Order.builder()
                 .member(member)
-                .deliveryAddress(deliveryAddress)
                 .build();
     }
 

@@ -12,15 +12,6 @@ public class MemberUpdateRequest {
     @NotBlank(message = "이름은 필수입니다.")
     private String name;
 
-    @NotBlank(message = "우편번호는 필수입니다.")
-    private String zipcode;
-
-    @NotBlank(message = "주소는 필수입니다.")
-    private String street;
-
-    @NotBlank(message = "상세주소는 필수입니다.")
-    private String detail;
-
     @NotBlank(message = "전화번호는 필수입니다.")
     @Pattern(regexp = "^\\d{2,3}-\\d{3,4}-\\d{4}$", message = "전화번호 형식이 올바르지 않습니다.")
     private String phoneNumber;

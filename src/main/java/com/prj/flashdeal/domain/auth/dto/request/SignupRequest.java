@@ -26,15 +26,6 @@ public class SignupRequest {
     @NotBlank(message = "이름은 필수 입력 값입니다.")
     private String name;
 
-    @NotBlank(message = "우편번호는 필수 입력 값입니다.")
-    private String zipcode;
-
-    @NotBlank(message = "도로명 주소는 필수 입력 값입니다.")
-    private String street;
-
-    @NotBlank(message = "상세 주소는 필수 입력 값입니다.")
-    private String detail;
-
     @NotBlank(message = "연락처는 필수 입력 값입니다.")
     private String phoneNumber;
 }

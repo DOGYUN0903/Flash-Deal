@@ -12,7 +12,6 @@ import com.prj.flashdeal.domain.member.entity.Member;
 import com.prj.flashdeal.domain.member.exception.MemberErrorCode;
 import com.prj.flashdeal.domain.member.exception.MemberException;
 import com.prj.flashdeal.domain.member.repository.MemberRepository;
-import com.prj.flashdeal.domain.order.entity.DeliveryAddress;
 import com.prj.flashdeal.domain.order.entity.Order;
 import com.prj.flashdeal.domain.order.entity.OrderItem;
 import com.prj.flashdeal.domain.order.repository.OrderRepository;
@@ -57,7 +56,6 @@ public class DealService {
         // 5. 주문 생성
         Order order = Order.builder()
                 .member(member)
-                .deliveryAddress(DeliveryAddress.from(member))
                 .dealId(deal.getId())
                 .build();
 

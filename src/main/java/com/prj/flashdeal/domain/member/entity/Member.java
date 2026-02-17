@@ -5,7 +5,6 @@ import com.prj.flashdeal.domain.member.exception.MemberException;
 import com.prj.flashdeal.global.entity.BaseEntity;
 
 import jakarta.persistence.Column;
-import jakarta.persistence.Embedded;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
@@ -38,9 +37,6 @@ public class Member extends BaseEntity {
     @Column(nullable = false)
     private String name; // 사용자 이름
 
-    @Embedded
-    private Address address;
-
     @Column(nullable = false)
     private String phoneNumber;
 
@@ -62,11 +58,10 @@ public class Member extends BaseEntity {
     }
 
     @Builder
-    private Member(String email, String password, String name, Address address, String phoneNumber) {
+    private Member(String email, String password, String name, String phoneNumber) {
         this.email = email;
         this.password = password;
         this.name = name;
-        this.address = address;
         this.phoneNumber = phoneNumber;
         this.role = Role.USER;
         this.status = MemberStatus.ACTIVE;
@@ -75,9 +70,8 @@ public class Member extends BaseEntity {
     /**
      * 회원 정보 수정
      */
-    public void updateInfo(String name, Address address, String phoneNumber) {
+    public void updateInfo(String name, String phoneNumber) {
         this.name = name;
-        this.address = address;
         this.phoneNumber = phoneNumber;
     }
 

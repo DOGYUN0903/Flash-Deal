@@ -10,7 +10,6 @@ public record OrderResponse(
     Long orderId,
     Long memberId,
     OrderStatus status,
-    DeliveryAddressResponse deliveryAddress,
     List<OrderItemResponse> orderItems,
     Integer totalPrice,
     LocalDateTime createdAt
@@ -20,7 +19,6 @@ public record OrderResponse(
             order.getId(),
             order.getMember().getId(),
             order.getStatus(),
-            DeliveryAddressResponse.from(order.getDeliveryAddress()),
             order.getOrderItems().stream()
                 .map(OrderItemResponse::from)
                 .toList(),

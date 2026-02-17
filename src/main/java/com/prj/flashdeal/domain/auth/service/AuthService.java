@@ -11,7 +11,6 @@ import org.springframework.transaction.annotation.Transactional;
 import com.prj.flashdeal.domain.auth.dto.request.LoginRequest;
 import com.prj.flashdeal.domain.auth.dto.request.SignupRequest;
 import com.prj.flashdeal.domain.auth.dto.response.LoginResponse;
-import com.prj.flashdeal.domain.member.entity.Address;
 import com.prj.flashdeal.domain.member.entity.Member;
 import com.prj.flashdeal.domain.member.exception.MemberErrorCode;
 import com.prj.flashdeal.domain.member.exception.MemberException;
@@ -41,13 +40,6 @@ public class AuthService {
             .email(request.getEmail())
             .password(encodePassword)
             .name(request.getName())
-            .address(
-                Address.of(
-                    request.getZipcode(),
-                    request.getStreet(),
-                    request.getDetail()
-                )
-            )
             .phoneNumber(request.getPhoneNumber())
             .build();
 

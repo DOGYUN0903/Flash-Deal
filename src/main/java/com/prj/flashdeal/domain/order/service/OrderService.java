@@ -15,7 +15,6 @@ import com.prj.flashdeal.domain.order.dto.request.DirectOrderRequest;
 import com.prj.flashdeal.domain.order.dto.request.OrderCreateRequest;
 import com.prj.flashdeal.domain.order.dto.response.OrderResponse;
 import com.prj.flashdeal.domain.order.dto.response.OrderSummaryResponse;
-import com.prj.flashdeal.domain.order.entity.DeliveryAddress;
 import com.prj.flashdeal.domain.order.entity.Order;
 import com.prj.flashdeal.domain.order.entity.OrderItem;
 import com.prj.flashdeal.domain.order.exception.OrderErrorCode;
@@ -49,17 +48,8 @@ public class OrderService {
             throw new OrderException(OrderErrorCode.EMPTY_CART);
         }
 
-        // 배송지 정보 생성
-        DeliveryAddress deliveryAddress = DeliveryAddress.of(
-            request.getRecipientName(),
-            request.getPhoneNumber(),
-            request.getZipcode(),
-            request.getStreet(),
-            request.getDetail()
-        );
-
         // 주문 생성
-        Order order = Order.createOrder(member, deliveryAddress);
+        Order order = Order.createOrder(member);
 
         // 장바구니 항목 → 주문 항목 변환 및 재고 감소
         for (CartItem cartItem : cartItems) {
@@ -92,17 +82,8 @@ public class OrderService {
         // 상품 조회 및 검증
         Product product = productService.findCartableProduct(request.getProductId());
 
-        // 배송지 정보 생성
-        DeliveryAddress deliveryAddress = DeliveryAddress.of(
-            request.getRecipientName(),
-            request.getPhoneNumber(),
-            request.getZipcode(),
-            request.getStreet(),
-            request.getDetail()
-        );
-
         // 주문 생성
-        Order order = Order.createOrder(member, deliveryAddress);
+        Order order = Order.createOrder(member);
 
         // 재고 감소
         productService.decreaseStock(product.getId(), request.getQuantity());

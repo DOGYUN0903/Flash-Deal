@@ -7,7 +7,6 @@ import org.springframework.transaction.annotation.Transactional;
 import com.prj.flashdeal.domain.member.dto.request.MemberUpdateRequest;
 import com.prj.flashdeal.domain.member.dto.request.PasswordChangeRequest;
 import com.prj.flashdeal.domain.member.dto.response.MemberProfileResponse;
-import com.prj.flashdeal.domain.member.entity.Address;
 import com.prj.flashdeal.domain.member.entity.Member;
 import com.prj.flashdeal.domain.member.entity.MemberStatus;
 import com.prj.flashdeal.domain.member.exception.MemberErrorCode;
@@ -55,13 +54,7 @@ public class MemberService {
     public MemberProfileResponse updateMemberInfo(Long userId, MemberUpdateRequest request) {
         Member member = getMember(userId);
 
-        Address newAddress = Address.of(
-            request.getZipcode(),
-            request.getStreet(),
-            request.getDetail()
-        );
-
-        member.updateInfo(request.getName(), newAddress, request.getPhoneNumber());
+        member.updateInfo(request.getName(), request.getPhoneNumber());
 
         return MemberProfileResponse.from(member);
     }
