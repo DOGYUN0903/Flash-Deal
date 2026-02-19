@@ -40,9 +40,43 @@ export interface PasswordChangeRequest {
   newPassword: string;
 }
 
+export interface PageResponse<T> {
+  data: T[];
+  pageNumber: number;
+  pageSize: number;
+  totalElements: number;
+  totalPages: number;
+}
+
+export interface ProductSummary {
+  productId: number;
+  name: string;
+  price: number;
+  status: string;
+}
+
+export interface ProductDetail {
+  productId: number;
+  name: string;
+  description: string;
+  price: number;
+  status: string;
+}
+
 export interface Deal {
   id: number;
   productName: string;
+  dealPrice: number;
+  stock: number;
+  openTime: string;
+  endTime: string;
+}
+
+export interface DealDetail {
+  id: number;
+  productName: string;
+  productDescription: string;
+  originalPrice: number;
   dealPrice: number;
   stock: number;
   openTime: string;

@@ -13,6 +13,8 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.web.cors.CorsConfigurationSource;
 
+import org.springframework.http.HttpMethod;
+
 import lombok.RequiredArgsConstructor;
 
 @Configuration
@@ -61,12 +63,15 @@ public class SecurityConfig {
                 .requestMatchers(
                     "/api/auth/login",
                     "/api/auth/signup",
-                    "/api/products",
-                    "/api/products/**",
-                    "/api/deals",
                     "/swagger-ui/**",
                     "/v3/api-docs/**",
                     "/actuator/**"
+                ).permitAll()
+                .requestMatchers(HttpMethod.GET,
+                    "/api/products",
+                    "/api/products/**",
+                    "/api/deals",
+                    "/api/deals/**"
                 ).permitAll()
                 .requestMatchers("/api/admin/**").hasRole("ADMIN")
                 .anyRequest().authenticated()

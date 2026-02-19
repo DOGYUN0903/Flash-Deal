@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import Header from "@/components/layout/Header";
+import CategoryTab from "@/components/layout/CategoryTab";
 import { dealApi } from "@/lib/deal-api";
 import { Deal } from "@/lib/types";
 
@@ -53,16 +54,22 @@ export default function DealsPage() {
   const [deals, setDeals] = useState<Deal[]>([]);
   const [loading, setLoading] = useState(true);
   const [buying, setBuying] = useState<number | null>(null);
+  const [page, setPage] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
 
   useEffect(() => {
+    setLoading(true);
     dealApi
-      .getDeals()
-      .then((res) => setDeals(res.data))
+      .getDeals(page)
+      .then((res) => {
+        setDeals(res.data.data);
+        setTotalPages(res.data.totalPages);
+      })
       .catch(() => {
         toast.error("딜 목록을 불러오지 못했습니다.");
       })
       .finally(() => setLoading(false));
-  }, []);
+  }, [page]);
 
   const handleBuy = async (dealId: number) => {
     setBuying(dealId);
@@ -84,24 +91,53 @@ export default function DealsPage() {
   return (
     <div>
       <Header />
-      <div className="max-w-5xl mx-auto px-4 py-8">
+      <CategoryTab />
+      <div className="max-w-6xl mx-auto px-4 py-8">
+        <h2 className="text-2xl font-bold mb-6">⚡ 플래시 딜</h2>
       {/* 딜 목록 */}
       {loading ? (
         <div className="text-center py-20 text-gray-400">불러오는 중...</div>
       ) : deals.length === 0 ? (
         <div className="text-center py-20 text-gray-400">진행 중인 딜이 없습니다.</div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {deals.map((deal) => (
-            <DealCard
-              key={deal.id}
-              deal={deal}
-              onBuy={(id) => {
-                if (buying === null) handleBuy(id);
-              }}
-            />
-          ))}
-        </div>
+        <>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {deals.map((deal) => (
+              <DealCard
+                key={deal.id}
+                deal={deal}
+                onBuy={(id) => {
+                  if (buying === null) handleBuy(id);
+                }}
+              />
+            ))}
+          </div>
+
+          {/* 페이지네이션 */}
+          {totalPages > 1 && (
+            <div className="flex justify-center gap-2 mt-8">
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={page === 0}
+                onClick={() => setPage((p) => p - 1)}
+              >
+                이전
+              </Button>
+              <span className="flex items-center px-3 text-sm text-gray-600">
+                {page + 1} / {totalPages}
+              </span>
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={page >= totalPages - 1}
+                onClick={() => setPage((p) => p + 1)}
+              >
+                다음
+              </Button>
+            </div>
+          )}
+        </>
       )}
       </div>
     </div>

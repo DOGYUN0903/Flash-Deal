@@ -1,13 +1,13 @@
 package com.prj.flashdeal.domain.deal.service;
 
-import java.util.List;
-import java.util.stream.Collectors;
-
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.prj.flashdeal.domain.deal.dto.response.DealDetailResponse;
 import com.prj.flashdeal.domain.deal.dto.response.DealPurchaseResponse;
 import com.prj.flashdeal.domain.deal.dto.response.DealSummaryResponse;
+import com.prj.flashdeal.global.response.PageResponse;
 import com.prj.flashdeal.domain.deal.entity.Deal;
 import com.prj.flashdeal.domain.deal.exception.DealErrorCode;
 import com.prj.flashdeal.domain.deal.exception.DealException;
@@ -37,11 +37,18 @@ public class DealService {
     private final FakePaymentClient fakePaymentClient;
 
     @Transactional(readOnly = true)
-    public List<DealSummaryResponse> getDeals() {
-        return dealRepository.findAllByDeletedAtIsNullOrderByOpenTimeDesc()
-                .stream()
-                .map(DealSummaryResponse::from)
-                .collect(Collectors.toList());
+    public PageResponse<DealSummaryResponse> getDeals(Pageable pageable) {
+        return new PageResponse<>(
+                dealRepository.findAllByDeletedAtIsNull(pageable)
+                        .map(DealSummaryResponse::from)
+        );
+    }
+
+    @Transactional(readOnly = true)
+    public DealDetailResponse getDeal(Long dealId) {
+        Deal deal = dealRepository.findById(dealId)
+                .orElseThrow(() -> new DealException(DealErrorCode.DEAL_NOT_FOUND));
+        return DealDetailResponse.from(deal);
     }
 
     @Transactional
