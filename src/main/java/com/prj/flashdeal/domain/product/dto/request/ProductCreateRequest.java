@@ -19,4 +19,8 @@ public class ProductCreateRequest {
     @NotNull(message = "상품 가격은 필수 입력 값입니다.")
     @Positive(message = "상품 가격은 0보다 커야 합니다.")
     private Integer price;
+
+    @NotNull(message = "재고는 필수 입력 값입니다.")
+    @jakarta.validation.constraints.Min(value = 0, message = "재고는 0 이상이어야 합니다.")
+    private Integer stock;
 }

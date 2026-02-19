@@ -8,7 +8,6 @@ import com.prj.flashdeal.domain.product.dto.request.ProductCreateRequest;
 import com.prj.flashdeal.domain.product.dto.request.ProductSearchCondForAdmin;
 import com.prj.flashdeal.domain.product.dto.request.ProductSearchCondForUser;
 import com.prj.flashdeal.domain.product.dto.request.ProductUpdateRequest;
-import com.prj.flashdeal.domain.product.dto.request.StockAddRequest;
 import com.prj.flashdeal.domain.product.dto.response.ProductResponse;
 import com.prj.flashdeal.domain.product.dto.response.ProductResponseForUser;
 import com.prj.flashdeal.domain.product.dto.response.ProductSummaryResponse;
@@ -34,20 +33,10 @@ public class ProductService {
             .name(request.getName())
             .description(request.getDescription())
             .price(request.getPrice())
+            .stock(request.getStock())
             .build();
 
-        Product savedProduct = productRepository.save(product);
-
-        return ProductResponse.from(savedProduct);
-    }
-
-    @Transactional
-    public ProductResponse addStock(Long productId, StockAddRequest request) {
-        Product product = getProduct(productId);
-
-        product.addStock(request.getQuantity());
-
-        return ProductResponse.from(product);
+        return ProductResponse.from(productRepository.save(product));
     }
 
     @Transactional(readOnly = true)
@@ -71,6 +60,10 @@ public class ProductService {
             request.getDescription(),
             request.getPrice()
         );
+
+        if (request.getStock() != null) {
+            product.updateStock(request.getStock());
+        }
 
         return ProductResponse.from(product);
     }

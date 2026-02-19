@@ -18,7 +18,6 @@ import org.springframework.web.bind.annotation.RestController;
 import com.prj.flashdeal.domain.product.dto.request.ProductCreateRequest;
 import com.prj.flashdeal.domain.product.dto.request.ProductSearchCondForAdmin;
 import com.prj.flashdeal.domain.product.dto.request.ProductUpdateRequest;
-import com.prj.flashdeal.domain.product.dto.request.StockAddRequest;
 import com.prj.flashdeal.domain.product.dto.response.ProductResponse;
 import com.prj.flashdeal.domain.product.dto.response.ProductSummaryResponse;
 import com.prj.flashdeal.domain.product.service.ProductService;
@@ -42,18 +41,6 @@ public class AdminProductController {
             HttpStatus.CREATED,
             "상품 등록이 완료되었습니다.",
             productService.createProduct(request)
-        );
-    }
-
-    @PostMapping("/{productId}/stock")
-    public ResponseEntity<ApiResponse<ProductResponse>> addStock(
-        @PathVariable Long productId,
-        @Valid @RequestBody StockAddRequest request
-    ) {
-        return ApiResponse.success(
-            HttpStatus.OK,
-            "재고가 추가되었습니다.",
-            productService.addStock(productId, request)
         );
     }
 

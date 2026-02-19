@@ -53,12 +53,12 @@ public class Product extends BaseEntity {
     }
 
     @Builder
-    private Product(String name, String description, Integer price) {
+    private Product(String name, String description, Integer price, Integer stock) {
         this.name = name;
         this.description = description;
         this.price = price;
-        this.stockQuantity = 0;
-        this.status = ProductStatus.PREPARING;
+        this.stockQuantity = stock != null ? stock : 0;
+        this.status = (this.stockQuantity > 0) ? ProductStatus.ON_SALE : ProductStatus.PREPARING;
     }
 
     public void addStock(Integer quantity) {
@@ -83,6 +83,18 @@ public class Product extends BaseEntity {
 
         if (this.stockQuantity == 0) {
             this.status = ProductStatus.SOLD_OUT;
+        }
+    }
+
+    public void updateStock(Integer stock) {
+        if (stock < 0) {
+            throw new ProductException(ProductErrorCode.INVALID_STOCK_QUANTITY);
+        }
+        this.stockQuantity = stock;
+        if (stock == 0) {
+            this.status = ProductStatus.SOLD_OUT;
+        } else {
+            this.status = ProductStatus.ON_SALE;
         }
     }
 
