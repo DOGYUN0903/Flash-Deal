@@ -1,13 +1,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import Header from "@/components/layout/Header";
 import { dealApi } from "@/lib/deal-api";
-import { authApi } from "@/lib/auth-api";
 import { Deal } from "@/lib/types";
 
 function formatPrice(price: number) {
@@ -51,7 +50,6 @@ function DealCard({ deal, onBuy }: { deal: Deal; onBuy: (id: number) => void }) 
 }
 
 export default function DealsPage() {
-  const router = useRouter();
   const [deals, setDeals] = useState<Deal[]>([]);
   const [loading, setLoading] = useState(true);
   const [buying, setBuying] = useState<number | null>(null);
@@ -64,7 +62,7 @@ export default function DealsPage() {
         toast.error("딜 목록을 불러오지 못했습니다.");
       })
       .finally(() => setLoading(false));
-  }, [router]);
+  }, []);
 
   const handleBuy = async (dealId: number) => {
     setBuying(dealId);
@@ -83,25 +81,10 @@ export default function DealsPage() {
     }
   };
 
-  const handleLogout = async () => {
-    try {
-      await authApi.logout();
-      router.push("/login");
-    } catch {
-      router.push("/login");
-    }
-  };
-
   return (
-    <div className="max-w-5xl mx-auto px-4 py-8">
-      {/* 헤더 */}
-      <div className="flex items-center justify-between mb-8">
-        <h1 className="text-3xl font-bold">⚡ Flash Deal</h1>
-        <Button variant="outline" onClick={handleLogout}>
-          로그아웃
-        </Button>
-      </div>
-
+    <div>
+      <Header />
+      <div className="max-w-5xl mx-auto px-4 py-8">
       {/* 딜 목록 */}
       {loading ? (
         <div className="text-center py-20 text-gray-400">불러오는 중...</div>
@@ -120,6 +103,7 @@ export default function DealsPage() {
           ))}
         </div>
       )}
+      </div>
     </div>
   );
 }
