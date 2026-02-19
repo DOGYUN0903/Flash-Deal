@@ -22,6 +22,24 @@ export interface LoginRequest {
   password: string;
 }
 
+export interface MemberProfile {
+  id: number;
+  email: string;
+  name: string;
+  phoneNumber: string;
+  balance: number;
+}
+
+export interface MemberUpdateRequest {
+  name: string;
+  phoneNumber: string;
+}
+
+export interface PasswordChangeRequest {
+  currentPassword: string;
+  newPassword: string;
+}
+
 export interface Deal {
   id: number;
   productName: string;
