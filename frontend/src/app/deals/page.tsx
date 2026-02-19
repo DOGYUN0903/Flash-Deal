@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -22,21 +23,23 @@ function DealCard({ deal, onBuy }: { deal: Deal; onBuy: (id: number) => void }) 
 
   return (
     <Card className="flex flex-col">
-      <CardHeader>
-        <div className="flex items-start justify-between gap-2">
-          <CardTitle className="text-lg">{deal.productName}</CardTitle>
-          <Badge variant={isOpen ? "default" : "secondary"}>
-            {deal.stock === 0 ? "품절" : isOpen ? "진행중" : "종료"}
-          </Badge>
-        </div>
-      </CardHeader>
-      <CardContent className="flex-1 space-y-2">
-        <p className="text-2xl font-bold text-blue-600">{formatPrice(deal.dealPrice)}</p>
-        <p className="text-sm text-gray-500">남은 수량: {deal.stock}개</p>
-        <p className="text-xs text-gray-400">
-          {open.toLocaleString("ko-KR")} ~ {end.toLocaleString("ko-KR")}
-        </p>
-      </CardContent>
+      <Link href={`/deals/${deal.id}`}>
+        <CardHeader className="hover:bg-gray-50 transition-colors rounded-t-xl cursor-pointer">
+          <div className="flex items-start justify-between gap-2">
+            <CardTitle className="text-lg">{deal.productName}</CardTitle>
+            <Badge variant={isOpen ? "default" : "secondary"}>
+              {deal.stock === 0 ? "품절" : isOpen ? "진행중" : "종료"}
+            </Badge>
+          </div>
+        </CardHeader>
+        <CardContent className="flex-1 space-y-2 hover:bg-gray-50 transition-colors cursor-pointer">
+          <p className="text-2xl font-bold text-blue-600">{formatPrice(deal.dealPrice)}</p>
+          <p className="text-sm text-gray-500">남은 수량: {deal.stock}개</p>
+          <p className="text-xs text-gray-400">
+            {open.toLocaleString("ko-KR")} ~ {end.toLocaleString("ko-KR")}
+          </p>
+        </CardContent>
+      </Link>
       <CardFooter>
         <Button
           className="w-full"
