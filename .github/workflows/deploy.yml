@@ -7,6 +7,12 @@ on:
   push:
     branches:
       - dev
+    paths:
+      - 'src/**'
+      - 'build.gradle'
+      - 'settings.gradle'
+      - 'Dockerfile'
+      - 'docker-compose.prod.yml'
 
 # 하나의 workflow는 1개 이상의 job으로 구성된다.
 # 여러 job은 기본적으로 병렬적으로 수행된다.
