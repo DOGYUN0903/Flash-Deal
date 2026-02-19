@@ -4,11 +4,16 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.prj.flashdeal.domain.deal.dto.request.DealCreateRequest;
 import com.prj.flashdeal.domain.deal.dto.response.DealDetailResponse;
 import com.prj.flashdeal.domain.deal.dto.response.DealPurchaseResponse;
 import com.prj.flashdeal.domain.deal.dto.response.DealSummaryResponse;
 import com.prj.flashdeal.global.response.PageResponse;
 import com.prj.flashdeal.domain.deal.entity.Deal;
+import com.prj.flashdeal.domain.product.entity.Product;
+import com.prj.flashdeal.domain.product.exception.ProductErrorCode;
+import com.prj.flashdeal.domain.product.exception.ProductException;
+import com.prj.flashdeal.domain.product.repository.ProductRepository;
 import com.prj.flashdeal.domain.deal.exception.DealErrorCode;
 import com.prj.flashdeal.domain.deal.exception.DealException;
 import com.prj.flashdeal.domain.deal.repository.DealRepository;
@@ -32,9 +37,26 @@ import lombok.extern.slf4j.Slf4j;
 public class DealService {
 
     private final DealRepository dealRepository;
+    private final ProductRepository productRepository;
     private final MemberRepository memberRepository;
     private final OrderRepository orderRepository;
     private final FakePaymentClient fakePaymentClient;
+
+    @Transactional
+    public DealDetailResponse createDeal(DealCreateRequest request) {
+        Product product = productRepository.findById(request.getProductId())
+                .orElseThrow(() -> new ProductException(ProductErrorCode.PRODUCT_NOT_FOUND));
+
+        Deal deal = Deal.builder()
+                .product(product)
+                .dealPrice(request.getDealPrice())
+                .stock(request.getStock())
+                .openTime(request.getOpenTime())
+                .endTime(request.getEndTime())
+                .build();
+
+        return DealDetailResponse.from(dealRepository.save(deal));
+    }
 
     @Transactional(readOnly = true)
     public PageResponse<DealSummaryResponse> getDeals(Pageable pageable) {
