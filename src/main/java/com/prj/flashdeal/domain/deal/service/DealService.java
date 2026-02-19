@@ -1,9 +1,13 @@
 package com.prj.flashdeal.domain.deal.service;
 
+import java.util.List;
+import java.util.stream.Collectors;
+
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.prj.flashdeal.domain.deal.dto.response.DealPurchaseResponse;
+import com.prj.flashdeal.domain.deal.dto.response.DealSummaryResponse;
 import com.prj.flashdeal.domain.deal.entity.Deal;
 import com.prj.flashdeal.domain.deal.exception.DealErrorCode;
 import com.prj.flashdeal.domain.deal.exception.DealException;
@@ -31,6 +35,14 @@ public class DealService {
     private final MemberRepository memberRepository;
     private final OrderRepository orderRepository;
     private final FakePaymentClient fakePaymentClient;
+
+    @Transactional(readOnly = true)
+    public List<DealSummaryResponse> getDeals() {
+        return dealRepository.findAllByDeletedAtIsNullOrderByOpenTimeDesc()
+                .stream()
+                .map(DealSummaryResponse::from)
+                .collect(Collectors.toList());
+    }
 
     @Transactional
     public DealPurchaseResponse purchase(Long memberId, Long dealId) {
