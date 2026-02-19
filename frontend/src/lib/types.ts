@@ -72,6 +72,22 @@ export interface Deal {
   endTime: string;
 }
 
+export interface CartItem {
+  cartItemId: number;
+  productId: number;
+  productName: string;
+  price: number;
+  quantity: number;
+  totalPrice: number;
+}
+
+export interface CartResponse {
+  memberId: number;
+  items: CartItem[];
+  totalPrice: number;
+  totalQuantity: number;
+}
+
 export interface DealDetail {
   id: number;
   productName: string;
