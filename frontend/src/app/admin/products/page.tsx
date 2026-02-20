@@ -1,0 +1,274 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import { toast } from "sonner";
+import { Plus, Pencil, Trash2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { adminApi, AdminProductSummary, AdminProductDetail } from "@/lib/admin-api";
+
+const STATUS_LABEL: Record<string, { label: string; variant: "default" | "secondary" | "destructive" }> = {
+  ON_SALE:   { label: "판매중",     variant: "default" },
+  PREPARING: { label: "판매 준비중", variant: "secondary" },
+  SOLD_OUT:  { label: "품절",       variant: "destructive" },
+};
+
+const EMPTY_FORM = { name: "", description: "", price: "", stock: "" };
+
+export default function AdminProductsPage() {
+  const [products, setProducts] = useState<AdminProductSummary[]>([]);
+  const [totalPages, setTotalPages] = useState(0);
+  const [page, setPage] = useState(0);
+  const [loading, setLoading] = useState(true);
+
+  // 등록 모달
+  const [createOpen, setCreateOpen] = useState(false);
+  const [createForm, setCreateForm] = useState(EMPTY_FORM);
+  const [creating, setCreating] = useState(false);
+
+  // 수정 모달
+  const [editTarget, setEditTarget] = useState<AdminProductDetail | null>(null);
+  const [editForm, setEditForm] = useState(EMPTY_FORM);
+  const [editing, setEditing] = useState(false);
+
+  const fetchProducts = (p = page) => {
+    setLoading(true);
+    adminApi
+      .getProducts(p)
+      .then((res) => {
+        setProducts(res.data.data);
+        setTotalPages(res.data.totalPages);
+      })
+      .catch(() => toast.error("상품 목록을 불러오지 못했습니다."))
+      .finally(() => setLoading(false));
+  };
+
+  useEffect(() => { fetchProducts(page); }, [page]);
+
+  const handleCreate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setCreating(true);
+    try {
+      await adminApi.createProduct({
+        name: createForm.name,
+        description: createForm.description,
+        price: Number(createForm.price),
+        stock: Number(createForm.stock),
+      });
+      toast.success("상품이 등록되었습니다.");
+      setCreateOpen(false);
+      setCreateForm(EMPTY_FORM);
+      fetchProducts(0);
+      setPage(0);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "등록에 실패했습니다.");
+    } finally {
+      setCreating(false);
+    }
+  };
+
+  const openEdit = async (productId: number) => {
+    try {
+      const res = await adminApi.getProduct(productId);
+      setEditTarget(res.data);
+      setEditForm({
+        name: res.data.name,
+        description: res.data.description,
+        price: String(res.data.price),
+        stock: String(res.data.stockQuantity),
+      });
+    } catch {
+      toast.error("상품 정보를 불러오지 못했습니다.");
+    }
+  };
+
+  const handleEdit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editTarget) return;
+    setEditing(true);
+    try {
+      await adminApi.updateProduct(editTarget.productId, {
+        name: editForm.name,
+        description: editForm.description,
+        price: Number(editForm.price),
+        stock: Number(editForm.stock),
+      });
+      toast.success("상품이 수정되었습니다.");
+      setEditTarget(null);
+      fetchProducts(page);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "수정에 실패했습니다.");
+    } finally {
+      setEditing(false);
+    }
+  };
+
+  const handleDelete = async (productId: number, name: string) => {
+    if (!confirm(`"${name}" 상품을 삭제하시겠습니까?`)) return;
+    try {
+      await adminApi.deleteProduct(productId);
+      toast.success("상품이 삭제되었습니다.");
+      fetchProducts(page);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "삭제에 실패했습니다.");
+    }
+  };
+
+  return (
+    <div className="p-8">
+      <div className="flex items-center justify-between mb-6">
+        <h1 className="text-2xl font-bold">상품 관리</h1>
+        <Button className="gap-2" onClick={() => setCreateOpen(true)}>
+          <Plus size={16} />
+          상품 등록
+        </Button>
+      </div>
+
+      {loading ? (
+        <p className="text-gray-400 py-20 text-center">불러오는 중...</p>
+      ) : (
+        <>
+          <div className="bg-white rounded-lg border">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>ID</TableHead>
+                  <TableHead>상품명</TableHead>
+                  <TableHead className="text-right">가격</TableHead>
+                  <TableHead className="text-right">재고</TableHead>
+                  <TableHead>상태</TableHead>
+                  <TableHead className="text-right">관리</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {products.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={6} className="text-center text-gray-400 py-10">
+                      등록된 상품이 없습니다.
+                    </TableCell>
+                  </TableRow>
+                ) : products.map((p) => {
+                  const status = STATUS_LABEL[p.status] ?? { label: p.status, variant: "secondary" as const };
+                  return (
+                    <TableRow key={p.productId}>
+                      <TableCell className="text-gray-500">{p.productId}</TableCell>
+                      <TableCell className="font-medium">{p.name}</TableCell>
+                      <TableCell className="text-right">{p.price.toLocaleString("ko-KR")}원</TableCell>
+                      <TableCell className="text-right">{p.stockQuantity.toLocaleString("ko-KR")}</TableCell>
+                      <TableCell>
+                        <Badge variant={status.variant}>{status.label}</Badge>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex justify-end gap-2">
+                          <Button size="sm" variant="outline" className="gap-1" onClick={() => openEdit(p.productId)}>
+                            <Pencil size={13} />
+                            수정
+                          </Button>
+                          <Button size="sm" variant="destructive" className="gap-1" onClick={() => handleDelete(p.productId, p.name)}>
+                            <Trash2 size={13} />
+                            삭제
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          </div>
+
+          {totalPages > 1 && (
+            <div className="flex justify-center gap-2 mt-6">
+              <Button variant="outline" size="sm" disabled={page === 0} onClick={() => setPage((p) => p - 1)}>이전</Button>
+              <span className="flex items-center px-3 text-sm text-gray-600">{page + 1} / {totalPages}</span>
+              <Button variant="outline" size="sm" disabled={page >= totalPages - 1} onClick={() => setPage((p) => p + 1)}>다음</Button>
+            </div>
+          )}
+        </>
+      )}
+
+      {/* 상품 등록 모달 */}
+      <Dialog open={createOpen} onOpenChange={setCreateOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>상품 등록</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleCreate} className="space-y-4">
+            <div className="space-y-2">
+              <Label>상품명</Label>
+              <Input value={createForm.name} onChange={(e) => setCreateForm({ ...createForm, name: e.target.value })} required />
+            </div>
+            <div className="space-y-2">
+              <Label>설명</Label>
+              <Input value={createForm.description} onChange={(e) => setCreateForm({ ...createForm, description: e.target.value })} />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-2">
+                <Label>가격 (원)</Label>
+                <Input type="number" min={0} value={createForm.price} onChange={(e) => setCreateForm({ ...createForm, price: e.target.value })} required />
+              </div>
+              <div className="space-y-2">
+                <Label>재고</Label>
+                <Input type="number" min={0} value={createForm.stock} onChange={(e) => setCreateForm({ ...createForm, stock: e.target.value })} required />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button type="button" variant="ghost" onClick={() => setCreateOpen(false)}>취소</Button>
+              <Button type="submit" disabled={creating}>{creating ? "등록 중..." : "등록"}</Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* 상품 수정 모달 */}
+      <Dialog open={!!editTarget} onOpenChange={(open) => { if (!open) setEditTarget(null); }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>상품 수정</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleEdit} className="space-y-4">
+            <div className="space-y-2">
+              <Label>상품명</Label>
+              <Input value={editForm.name} onChange={(e) => setEditForm({ ...editForm, name: e.target.value })} required />
+            </div>
+            <div className="space-y-2">
+              <Label>설명</Label>
+              <Input value={editForm.description} onChange={(e) => setEditForm({ ...editForm, description: e.target.value })} />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-2">
+                <Label>가격 (원)</Label>
+                <Input type="number" min={0} value={editForm.price} onChange={(e) => setEditForm({ ...editForm, price: e.target.value })} required />
+              </div>
+              <div className="space-y-2">
+                <Label>재고</Label>
+                <Input type="number" min={0} value={editForm.stock} onChange={(e) => setEditForm({ ...editForm, stock: e.target.value })} required />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button type="button" variant="ghost" onClick={() => setEditTarget(null)}>취소</Button>
+              <Button type="submit" disabled={editing}>{editing ? "수정 중..." : "수정"}</Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
