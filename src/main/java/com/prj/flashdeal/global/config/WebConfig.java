@@ -17,7 +17,7 @@ public class WebConfig {
         config.setAllowedOrigins(List.of(
             "http://localhost:3000"  // 로컬 개발 (Vercel 배포 후 실제 도메인 추가)
         ));
-        config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+        config.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         config.setAllowedHeaders(List.of("*"));
         config.setAllowCredentials(true); // 세션 쿠키(JSESSIONID) 전송 허용
 
