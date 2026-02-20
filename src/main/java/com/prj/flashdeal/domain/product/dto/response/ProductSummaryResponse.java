@@ -6,5 +6,6 @@ public record ProductSummaryResponse(
     Long productId,
     String name,
     Integer price,
+    Integer stockQuantity,
     ProductStatus status
 ) {}

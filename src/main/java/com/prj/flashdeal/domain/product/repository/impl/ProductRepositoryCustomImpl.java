@@ -38,6 +38,7 @@ public class ProductRepositoryCustomImpl implements ProductRepositoryCustom {
                 product.id,
                 product.name,
                 product.price,
+                product.stockQuantity,
                 product.status))
             .from(product)
             .where(
@@ -78,6 +79,7 @@ public class ProductRepositoryCustomImpl implements ProductRepositoryCustom {
                 product.id,
                 product.name,
                 product.price,
+                product.stockQuantity,
                 product.status))
             .from(product)
             .where(
