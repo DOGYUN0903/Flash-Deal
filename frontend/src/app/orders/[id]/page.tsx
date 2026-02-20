@@ -109,7 +109,7 @@ export default function OrderDetailPage() {
           <CardContent className="pt-4 space-y-2">
             <div className="flex justify-between text-sm">
               <span className="text-gray-500">주문 일시</span>
-              <span>{new Date(order.createdAt).toLocaleString("ko-KR")}</span>
+              <span>{new Date(order.createdAt + "Z").toLocaleString("ko-KR")}</span>
             </div>
             <div className="flex justify-between font-bold text-lg">
               <span>총 결제금액</span>

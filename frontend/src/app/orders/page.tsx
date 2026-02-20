@@ -80,7 +80,7 @@ export default function OrdersPage() {
                           <p className="font-medium">주문 #{order.orderId}</p>
                           <p className="text-sm text-gray-500">
                             상품 {order.itemCount}종 ·{" "}
-                            {new Date(order.createdAt).toLocaleDateString("ko-KR")}
+                            {new Date(order.createdAt + "Z").toLocaleDateString("ko-KR")}
                           </p>
                         </div>
                         <div className="flex items-center gap-4">

@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import Header from "@/components/layout/Header";
 import { cartApi } from "@/lib/cart-api";
+import { orderApi } from "@/lib/order-api";
 import { CartItem } from "@/lib/types";
 
 export default function CartPage() {
@@ -15,6 +16,7 @@ export default function CartPage() {
   const [items, setItems] = useState<CartItem[]>([]);
   const [totalPrice, setTotalPrice] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [ordering, setOrdering] = useState(false);
 
   useEffect(() => {
     cartApi
@@ -176,8 +178,24 @@ export default function CartPage() {
                 </div>
               </CardContent>
               <CardFooter>
-                <Button className="w-full" size="lg">
-                  주문하기
+                <Button
+                  className="w-full"
+                  size="lg"
+                  disabled={ordering}
+                  onClick={async () => {
+                    setOrdering(true);
+                    try {
+                      const res = await orderApi.fromCartOrder();
+                      toast.success("주문이 완료되었습니다.");
+                      router.push(`/orders/${res.data.orderId}`);
+                    } catch (err) {
+                      toast.error(err instanceof Error ? err.message : "주문에 실패했습니다.");
+                    } finally {
+                      setOrdering(false);
+                    }
+                  }}
+                >
+                  {ordering ? "처리 중..." : "주문하기"}
                 </Button>
               </CardFooter>
             </Card>

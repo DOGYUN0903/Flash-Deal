@@ -11,6 +11,9 @@ export const orderApi = {
   directOrder: (productId: number, quantity: number) =>
     api.post<ApiResponse<OrderDetail>>("/api/orders/direct", { productId, quantity }),
 
+  fromCartOrder: () =>
+    api.post<ApiResponse<OrderDetail>>("/api/orders/from-cart", {}),
+
   cancelOrder: (orderId: number) =>
     api.delete<ApiResponse<void>>(`/api/orders/${orderId}`),
 };
