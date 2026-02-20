@@ -1,8 +1,9 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { ShoppingCart, User, LogOut } from "lucide-react";
+import { ShoppingCart, User, LogOut, Package } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { authApi } from "@/lib/auth-api";
 
@@ -16,15 +17,28 @@ export default function Header() {
 
   return (
     <header className="border-b bg-white sticky top-0 z-10">
-      <div className="max-w-5xl mx-auto px-4 h-16 flex items-center justify-between">
-        <Link href="/deals" className="text-xl font-bold">
-          ⚡ Flash Deal
+      <div className="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
+        <Link href="/products" className="flex items-center gap-2">
+          <Image
+            src="/images/flashdeal.png"
+            alt="Flash Deal 로고"
+            width={36}
+            height={36}
+            className="rounded-md"
+          />
+          <span className="text-xl font-bold">Flash Deal</span>
         </Link>
         <nav className="flex items-center gap-1">
           <Link href="/mypage">
             <Button variant="ghost" size="sm" className="gap-2">
               <User size={18} />
               마이페이지
+            </Button>
+          </Link>
+          <Link href="/orders">
+            <Button variant="ghost" size="sm" className="gap-2">
+              <Package size={18} />
+              주문내역
             </Button>
           </Link>
           <Link href="/cart">

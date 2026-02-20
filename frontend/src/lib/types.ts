@@ -99,6 +99,32 @@ export interface DealDetail {
   endTime: string;
 }
 
+export interface OrderItem {
+  orderItemId: number;
+  productId: number;
+  productName: string;
+  price: number;
+  quantity: number;
+  orderPrice: number;
+}
+
+export interface OrderSummary {
+  orderId: number;
+  status: string;
+  totalPrice: number;
+  itemCount: number;
+  createdAt: string;
+}
+
+export interface OrderDetail {
+  orderId: number;
+  memberId: number;
+  status: string;
+  orderItems: OrderItem[];
+  totalPrice: number;
+  createdAt: string;
+}
+
 export interface DealPurchaseResponse {
   orderId: number;
   dealId: number;
