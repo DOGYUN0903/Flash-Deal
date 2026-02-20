@@ -105,8 +105,7 @@ export default function ProductDetailPage() {
                   setBuying(true);
                   try {
                     const res = await orderApi.directOrder(product.productId, 1);
-                    toast.success("주문이 완료되었습니다.");
-                    router.push(`/orders/${res.data.orderId}`);
+                    router.push(`/payment?orderId=${res.data.orderId}`);
                   } catch (err) {
                     toast.error(err instanceof Error ? err.message : "즉시 구매에 실패했습니다.");
                   } finally {

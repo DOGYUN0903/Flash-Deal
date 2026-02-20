@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.prj.flashdeal.domain.payment.dto.request.PaymentRequest;
+import com.prj.flashdeal.domain.payment.dto.request.TossConfirmRequest;
 import com.prj.flashdeal.domain.payment.dto.response.PaymentResponse;
 import com.prj.flashdeal.domain.payment.service.PaymentService;
 import com.prj.flashdeal.global.response.ApiResponse;
@@ -39,6 +40,21 @@ public class PaymentController {
             HttpStatus.CREATED,
             "결제가 완료되었습니다.",
             paymentService.processPayment(userPrincipal.getUserId(), request)
+        );
+    }
+
+    /**
+     * 토스페이먼츠 결제 승인
+     */
+    @PostMapping("/toss/confirm")
+    public ResponseEntity<ApiResponse<PaymentResponse>> confirmTossPayment(
+        @AuthenticationPrincipal CustomUserDetails userPrincipal,
+        @Valid @RequestBody TossConfirmRequest request
+    ) {
+        return ApiResponse.success(
+            HttpStatus.OK,
+            "결제가 승인되었습니다.",
+            paymentService.confirmTossPayment(userPrincipal.getUserId(), request)
         );
     }
 

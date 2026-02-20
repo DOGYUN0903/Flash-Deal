@@ -186,8 +186,7 @@ export default function CartPage() {
                     setOrdering(true);
                     try {
                       const res = await orderApi.fromCartOrder();
-                      toast.success("주문이 완료되었습니다.");
-                      router.push(`/orders/${res.data.orderId}`);
+                      router.push(`/payment?orderId=${res.data.orderId}`);
                     } catch (err) {
                       toast.error(err instanceof Error ? err.message : "주문에 실패했습니다.");
                     } finally {

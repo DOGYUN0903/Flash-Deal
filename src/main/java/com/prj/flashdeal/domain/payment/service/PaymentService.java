@@ -5,9 +5,12 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.prj.flashdeal.domain.order.entity.Order;
 import com.prj.flashdeal.domain.order.service.OrderService;
+import com.prj.flashdeal.domain.payment.client.TossPaymentClient;
 import com.prj.flashdeal.domain.payment.dto.request.PaymentRequest;
+import com.prj.flashdeal.domain.payment.dto.request.TossConfirmRequest;
 import com.prj.flashdeal.domain.payment.dto.response.PaymentResponse;
 import com.prj.flashdeal.domain.payment.entity.Payment;
+import com.prj.flashdeal.domain.payment.entity.PaymentMethod;
 import com.prj.flashdeal.domain.payment.exception.PaymentErrorCode;
 import com.prj.flashdeal.domain.payment.exception.PaymentException;
 import com.prj.flashdeal.domain.payment.repository.PaymentRepository;
@@ -20,6 +23,7 @@ public class PaymentService {
 
     private final PaymentRepository paymentRepository;
     private final OrderService orderService;
+    private final TossPaymentClient tossPaymentClient;
 
     /**
      * 결제 처리
@@ -59,6 +63,49 @@ public class PaymentService {
         Payment savedPayment = paymentRepository.save(payment);
 
         return PaymentResponse.from(savedPayment);
+    }
+
+    /**
+     * 토스페이먼츠 결제 승인
+     */
+    @Transactional
+    public PaymentResponse confirmTossPayment(Long memberId, TossConfirmRequest request) {
+        // "ORDER-{id}" 형식에서 orderId 파싱
+        Long orderId;
+        try {
+            orderId = Long.parseLong(request.getOrderId().replace("ORDER-", ""));
+        } catch (NumberFormatException e) {
+            throw new PaymentException(PaymentErrorCode.PAYMENT_NOT_FOUND);
+        }
+
+        // 주문 조회 및 권한 검증
+        Order order = orderService.findOrder(orderId);
+        if (!order.getMember().getId().equals(memberId)) {
+            throw new PaymentException(PaymentErrorCode.UNAUTHORIZED_ORDER);
+        }
+
+        // 중복 결제 확인
+        paymentRepository.findByOrderId(orderId).ifPresent(p -> {
+            throw new PaymentException(PaymentErrorCode.PAYMENT_ALREADY_COMPLETED);
+        });
+
+        // 금액 검증
+        if (!request.getAmount().equals(order.getTotalPrice())) {
+            throw new PaymentException(PaymentErrorCode.PAYMENT_AMOUNT_MISMATCH);
+        }
+
+        // 토스 API 승인 호출
+        tossPaymentClient.confirm(request.getPaymentKey(), request.getOrderId(), request.getAmount());
+
+        // 결제 저장 및 주문 상태 변경
+        Payment payment = Payment.builder()
+            .order(order)
+            .amount(request.getAmount())
+            .build();
+        payment.completePayment(PaymentMethod.TOSS);
+        order.completePayment(payment);
+
+        return PaymentResponse.from(paymentRepository.save(payment));
     }
 
     /**
