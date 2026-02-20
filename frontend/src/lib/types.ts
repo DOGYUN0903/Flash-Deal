@@ -27,7 +27,6 @@ export interface MemberProfile {
   email: string;
   name: string;
   phoneNumber: string;
-  balance: number;
 }
 
 export interface MemberUpdateRequest {

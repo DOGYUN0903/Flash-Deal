@@ -11,7 +11,7 @@ INSERT IGNORE INTO deal (deal_id, product_id, deal_price, stock, open_time, end_
 VALUES (1, 1, 99000, 100, NOW(), DATE_ADD(NOW(), INTERVAL 24 HOUR), NULL, NOW(), NOW());
 
 -- 테스트용 유저 1,000명 (각 잔액 10억)
-INSERT IGNORE INTO member (email, password, name, phone_number, role, status, balance, is_deleted, created_at, updated_at)
+INSERT IGNORE INTO member (email, password, name, phone_number, role, status, is_deleted, created_at, updated_at)
 WITH RECURSIVE seq AS (
     SELECT 1 AS n
     UNION ALL
@@ -24,7 +24,6 @@ SELECT
     CONCAT('010-0000-', LPAD(n, 4, '0')),
     'USER',
     'ACTIVE',
-    1000000000,
     false,
     NOW(),
     NOW()

@@ -24,10 +24,6 @@ import com.prj.flashdeal.domain.member.repository.MemberRepository;
 import com.prj.flashdeal.domain.order.entity.Order;
 import com.prj.flashdeal.domain.order.entity.OrderItem;
 import com.prj.flashdeal.domain.order.repository.OrderRepository;
-import com.prj.flashdeal.domain.payment.client.FakePaymentClient;
-import com.prj.flashdeal.domain.payment.entity.Payment;
-import com.prj.flashdeal.domain.payment.entity.PaymentMethod;
-
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
@@ -40,7 +36,6 @@ public class DealService {
     private final ProductRepository productRepository;
     private final MemberRepository memberRepository;
     private final OrderRepository orderRepository;
-    private final FakePaymentClient fakePaymentClient;
 
     @Transactional
     public DealDetailResponse createDeal(DealCreateRequest request) {
@@ -87,14 +82,10 @@ public class DealService {
             throw new DealException(DealErrorCode.DEAL_NOT_OPEN);
         }
 
-        // 3. 재고 검증 & 차감 (No Lock → Race Condition 발생 가능)
+        // 3. 재고 차감 (No Lock → Race Condition 발생 가능)
         deal.decreaseStock(1);
 
-        // 4. Mock 결제 (500~1000ms 지연, 20% 실패)
-        //    DB Lock을 점유한 상태가 아니므로 다른 스레드가 동시 접근 가능
-        fakePaymentClient.pay(memberId, deal.getDealPrice());
-
-        // 5. 주문 생성
+        // 4. 주문 생성 (PENDING - 토스 결제 완료 후 PAID로 변경됨)
         Order order = Order.builder()
                 .member(member)
                 .dealId(deal.getId())
@@ -107,20 +98,10 @@ public class DealService {
                 .build();
         order.addOrderItem(orderItem);
 
-        Payment payment = Payment.builder()
-                .order(order)
-                .amount(deal.getDealPrice())
-                .build();
-        payment.completePayment(PaymentMethod.TRANSFER);
-        order.completePayment(payment);
-
         orderRepository.save(order);
 
-        // 6. 포인트 차감
-        member.use(deal.getDealPrice().longValue());
-
-        log.info("딜 구매 완료 - memberId: {}, dealId: {}, remainingStock: {}",
-                memberId, dealId, deal.getStock());
+        log.info("딜 주문 생성 - memberId: {}, dealId: {}, orderId: {}, remainingStock: {}",
+                memberId, dealId, order.getId(), deal.getStock());
 
         return DealPurchaseResponse.of(order, deal);
     }

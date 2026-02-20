@@ -130,12 +130,6 @@ export default function MyPage() {
               <p className="text-sm text-gray-500">연락처</p>
               <p className="font-medium">{profile.phoneNumber}</p>
             </div>
-            <div>
-              <p className="text-sm text-gray-500">보유 잔액</p>
-              <p className="font-medium text-blue-600">
-                {profile.balance.toLocaleString("ko-KR")}원
-              </p>
-            </div>
           </CardContent>
         </Card>
 

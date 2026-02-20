@@ -44,11 +44,9 @@ export default function DealDetailPage() {
     setBuying(true);
     try {
       const res = await dealApi.purchase(Number(id));
-      toast.success(`구매 완료! 남은 수량: ${res.data.remainingStock}개`);
-      setDeal((prev) => prev ? { ...prev, stock: res.data.remainingStock } : prev);
+      router.push(`/payment?orderId=${res.data.orderId}`);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "구매에 실패했습니다.");
-    } finally {
       setBuying(false);
     }
   };

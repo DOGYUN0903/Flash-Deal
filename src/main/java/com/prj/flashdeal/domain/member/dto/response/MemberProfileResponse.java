@@ -6,16 +6,14 @@ public record MemberProfileResponse(
     Long id,
     String email,
     String name,
-    String phoneNumber,
-    Long balance
+    String phoneNumber
 ) {
     public static MemberProfileResponse from(Member member) {
         return new MemberProfileResponse(
             member.getId(),
             member.getEmail(),
             member.getName(),
-            member.getPhoneNumber(),
-            member.getBalance()
+            member.getPhoneNumber()
         );
     }
 }

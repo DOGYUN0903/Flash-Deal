@@ -1,7 +1,5 @@
 package com.prj.flashdeal.domain.member.entity;
 
-import com.prj.flashdeal.domain.member.exception.MemberErrorCode;
-import com.prj.flashdeal.domain.member.exception.MemberException;
 import com.prj.flashdeal.global.entity.BaseEntity;
 
 import jakarta.persistence.Column;
@@ -48,9 +46,6 @@ public class Member extends BaseEntity {
     @Column(nullable = false)
     private MemberStatus status;
 
-    @Column(nullable = false)
-    private Long balance = 0L;
-
     @Override
     public void delete() {
         super.delete();
@@ -82,26 +77,4 @@ public class Member extends BaseEntity {
         this.password = newPassword;
     }
 
-    /**
-     * 잔액 충전
-     */
-    public void charge(Long amount) {
-        if (amount <= 0) {
-            throw new MemberException(MemberErrorCode.INVALID_CHARGE_AMOUNT);
-        }
-        this.balance += amount;
-    }
-
-    /**
-     * 잔액 사용
-     */
-    public void use(Long amount) {
-        if (amount <= 0) {
-            throw new MemberException(MemberErrorCode.INVALID_USE_AMOUNT);
-        }
-        if (this.balance < amount) {
-            throw new MemberException(MemberErrorCode.INSUFFICIENT_BALANCE);
-        }
-        this.balance -= amount;
-    }
 }
