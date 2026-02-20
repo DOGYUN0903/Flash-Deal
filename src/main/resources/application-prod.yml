@@ -14,3 +14,6 @@ spring:
       hibernate:
         dialect: org.hibernate.dialect.MySQLDialect
         format_sql: false
+
+toss:
+  secret-key: ${TOSS_SECRET_KEY}
