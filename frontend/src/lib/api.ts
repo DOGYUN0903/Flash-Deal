@@ -8,6 +8,11 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
     ...options,
   });
 
+  if (res.status === 401) {
+    window.location.href = "/login";
+    throw new Error("로그인이 필요합니다.");
+  }
+
   const json = await res.json();
 
   if (!res.ok) {

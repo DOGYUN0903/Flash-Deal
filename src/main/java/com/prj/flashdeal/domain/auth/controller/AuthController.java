@@ -13,6 +13,8 @@ import com.prj.flashdeal.domain.auth.dto.response.LoginResponse;
 import com.prj.flashdeal.domain.auth.service.AuthService;
 import com.prj.flashdeal.global.response.ApiResponse;
 
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpSession;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 
@@ -39,5 +41,14 @@ public class AuthController {
             "로그인이 완료되었습니다.",
             authService.login(request)
         );
+    }
+
+    @PostMapping("/logout")
+    public ResponseEntity<ApiResponse<Void>> logout(HttpServletRequest request) {
+        HttpSession session = request.getSession(false);
+        if (session != null) {
+            session.invalidate();
+        }
+        return ApiResponse.success(HttpStatus.OK, "로그아웃이 완료되었습니다.", null);
     }
 }
