@@ -29,6 +29,8 @@ services:
       MYSQL_DBNAME: ${MYSQL_DBNAME}
       MYSQL_USERNAME: ${MYSQL_USERNAME}
       MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+      TOSS_SECRET_KEY: ${TOSS_SECRET_KEY}
+      TOSS_BASE_URL: ${TOSS_BASE_URL}
     depends_on:
       db:
         condition: service_healthy
