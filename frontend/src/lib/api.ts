@@ -13,10 +13,15 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
     throw new Error("로그인이 필요합니다.");
   }
 
-  const json = await res.json();
+  let json;
+  try {
+    json = await res.json();
+  } catch {
+    throw new Error("요청에 실패했습니다.");
+  }
 
   if (!res.ok) {
-    throw new Error(json.message ?? "요청에 실패했습니다.");
+    throw new Error(json?.message ?? "요청에 실패했습니다.");
   }
 
   return json;
