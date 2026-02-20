@@ -18,12 +18,15 @@ import com.prj.flashdeal.domain.payment.exception.PaymentException;
 @Component
 public class TossPaymentClient {
 
-    private static final String CONFIRM_URL = "https://api.tosspayments.com/v1/payments/confirm";
-
+    private final String baseUrl;
     private final String secretKey;
     private final RestTemplate restTemplate;
 
-    public TossPaymentClient(@Value("${toss.secret-key}") String secretKey) {
+    public TossPaymentClient(
+        @Value("${toss.base-url}") String baseUrl,
+        @Value("${toss.secret-key}") String secretKey
+    ) {
+        this.baseUrl = baseUrl;
         this.secretKey = secretKey;
         this.restTemplate = new RestTemplate();
     }
@@ -44,7 +47,7 @@ public class TossPaymentClient {
 
         try {
             restTemplate.exchange(
-                CONFIRM_URL,
+                baseUrl + "/v1/payments/confirm",
                 HttpMethod.POST,
                 new HttpEntity<>(body, headers),
                 String.class

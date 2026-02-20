@@ -116,6 +116,7 @@ jobs:
             MYSQL_ROOT_PASSWORD=${{ secrets.MYSQL_ROOT_PASSWORD }}
             DOCKERHUB_USERNAME=${{ secrets.DOCKERHUB_USERNAME }}
             TOSS_SECRET_KEY=${{ secrets.TOSS_SECRET_KEY }}
+            TOSS_BASE_URL=${{ secrets.TOSS_BASE_URL }}
             EOF
 
             # 기존 컨테이너 중지 및 삭제

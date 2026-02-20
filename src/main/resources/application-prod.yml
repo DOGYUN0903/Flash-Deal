@@ -16,4 +16,5 @@ spring:
         format_sql: false
 
 toss:
+  base-url: ${TOSS_BASE_URL:https://api.tosspayments.com}
   secret-key: ${TOSS_SECRET_KEY}
