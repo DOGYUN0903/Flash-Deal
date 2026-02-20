@@ -8,6 +8,9 @@ export const orderApi = {
   getOrder: (orderId: number) =>
     api.get<ApiResponse<OrderDetail>>(`/api/orders/${orderId}`),
 
+  directOrder: (productId: number, quantity: number) =>
+    api.post<ApiResponse<OrderDetail>>("/api/orders/direct", { productId, quantity }),
+
   cancelOrder: (orderId: number) =>
     api.delete<ApiResponse<void>>(`/api/orders/${orderId}`),
 };

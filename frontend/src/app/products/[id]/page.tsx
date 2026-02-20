@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { toast } from "sonner";
-import { ArrowLeft, ShoppingCart } from "lucide-react";
+import { ArrowLeft, ShoppingCart, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
@@ -11,6 +11,7 @@ import Header from "@/components/layout/Header";
 import CategoryTab from "@/components/layout/CategoryTab";
 import { productApi } from "@/lib/product-api";
 import { cartApi } from "@/lib/cart-api";
+import { orderApi } from "@/lib/order-api";
 import { ProductDetail } from "@/lib/types";
 
 const STATUS_LABEL: Record<string, { label: string; variant: "default" | "secondary" | "destructive" }> = {
@@ -25,6 +26,7 @@ export default function ProductDetailPage() {
   const [product, setProduct] = useState<ProductDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [adding, setAdding] = useState(false);
+  const [buying, setBuying] = useState(false);
 
   useEffect(() => {
     productApi
@@ -97,6 +99,27 @@ export default function ProductDetailPage() {
             <div className="flex flex-col gap-3 mt-4">
               <Button
                 size="lg"
+                className="gap-2"
+                disabled={product.status !== "ON_SALE" || buying}
+                onClick={async () => {
+                  setBuying(true);
+                  try {
+                    const res = await orderApi.directOrder(product.productId, 1);
+                    toast.success("주문이 완료되었습니다.");
+                    router.push(`/orders/${res.data.orderId}`);
+                  } catch (err) {
+                    toast.error(err instanceof Error ? err.message : "즉시 구매에 실패했습니다.");
+                  } finally {
+                    setBuying(false);
+                  }
+                }}
+              >
+                <Zap size={18} />
+                {buying ? "처리 중..." : "즉시 구매"}
+              </Button>
+              <Button
+                size="lg"
+                variant="outline"
                 className="gap-2"
                 disabled={product.status !== "ON_SALE" || adding}
                 onClick={async () => {
