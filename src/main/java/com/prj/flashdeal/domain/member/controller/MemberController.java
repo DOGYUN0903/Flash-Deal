@@ -5,12 +5,14 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.prj.flashdeal.domain.member.dto.request.MemberUpdateRequest;
 import com.prj.flashdeal.domain.member.dto.request.PasswordChangeRequest;
+import com.prj.flashdeal.domain.member.dto.request.PasswordVerifyRequest;
 import com.prj.flashdeal.domain.member.dto.response.MemberProfileResponse;
 import com.prj.flashdeal.domain.member.service.MemberService;
 import com.prj.flashdeal.global.response.ApiResponse;
@@ -53,6 +55,18 @@ public class MemberController {
             "회원 정보가 수정되었습니다.",
             memberService.updateMemberInfo(userPrincipal.getUserId(), request)
         );
+    }
+
+    /**
+     * 현재 비밀번호 확인
+     */
+    @PostMapping("/me/verify-password")
+    public ResponseEntity<ApiResponse<Void>> verifyPassword(
+        @AuthenticationPrincipal CustomUserDetails userPrincipal,
+        @Valid @RequestBody PasswordVerifyRequest request
+    ) {
+        memberService.verifyPassword(userPrincipal.getUserId(), request.getPassword());
+        return ApiResponse.success(HttpStatus.OK, "비밀번호 확인 완료", null);
     }
 
     /**

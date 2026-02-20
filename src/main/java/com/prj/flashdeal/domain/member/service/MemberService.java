@@ -60,6 +60,17 @@ public class MemberService {
     }
 
     /**
+     * 현재 비밀번호 확인
+     */
+    @Transactional(readOnly = true)
+    public void verifyPassword(Long userId, String password) {
+        Member member = getMember(userId);
+        if (!passwordEncoder.matches(password, member.getPassword())) {
+            throw new MemberException(MemberErrorCode.INVALID_PASSWORD);
+        }
+    }
+
+    /**
      * 비밀번호 변경
      */
     @Transactional

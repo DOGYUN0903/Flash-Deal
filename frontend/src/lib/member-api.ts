@@ -5,6 +5,9 @@ export const memberApi = {
   getMyProfile: () =>
     api.get<ApiResponse<MemberProfile>>("/api/members/me"),
 
+  verifyPassword: (password: string) =>
+    api.post<ApiResponse<null>>("/api/members/me/verify-password", { password }),
+
   updateMyProfile: (body: MemberUpdateRequest) =>
     api.patch<ApiResponse<MemberProfile>>("/api/members/me", body),
 
