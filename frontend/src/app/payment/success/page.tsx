@@ -23,7 +23,8 @@ function PaymentSuccessContent() {
       .confirmToss(paymentKey, orderId, amount)
       .then((res) => {
         toast.success("결제가 완료되었습니다.");
-        const numericOrderId = orderId.replace("ORDER-", "");
+        // "ORDER-{id}-{uuid}" 또는 "ORDER-{id}" 형식에서 숫자 id 추출
+        const numericOrderId = orderId.replace("ORDER-", "").split("-")[0];
         router.push(`/orders/${numericOrderId}`);
       })
       .catch((err) => {

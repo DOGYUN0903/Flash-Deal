@@ -20,6 +20,10 @@ function PaymentContent() {
   const [order, setOrder] = useState<OrderDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [paying, setPaying] = useState(false);
+  // 결제 시도마다 고유한 tossOrderId 생성 (중복 결제 방지)
+  const [tossOrderId] = useState(() =>
+    `ORDER-${orderId}-${crypto.randomUUID().slice(0, 8)}`
+  );
 
   useEffect(() => {
     if (!orderId) {
@@ -51,7 +55,7 @@ function PaymentContent() {
       await payment.requestPayment({
         method: "CARD",
         amount: { currency: "KRW", value: order.totalPrice },
-        orderId: `ORDER-${order.orderId}`,
+        orderId: tossOrderId,
         orderName,
         successUrl: `${window.location.origin}/payment/success`,
         failUrl: `${window.location.origin}/payment/fail`,

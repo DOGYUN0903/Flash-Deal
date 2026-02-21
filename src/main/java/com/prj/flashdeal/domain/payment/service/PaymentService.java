@@ -70,10 +70,11 @@ public class PaymentService {
      */
     @Transactional
     public PaymentResponse confirmTossPayment(Long memberId, TossConfirmRequest request) {
-        // "ORDER-{id}" 형식에서 orderId 파싱
+        // "ORDER-{id}-{uuid}" 또는 "ORDER-{id}" 형식에서 orderId 파싱
         Long orderId;
         try {
-            orderId = Long.parseLong(request.getOrderId().replace("ORDER-", ""));
+            String withoutPrefix = request.getOrderId().replaceFirst("^ORDER-", "");
+            orderId = Long.parseLong(withoutPrefix.split("-")[0]);
         } catch (NumberFormatException e) {
             throw new PaymentException(PaymentErrorCode.PAYMENT_NOT_FOUND);
         }

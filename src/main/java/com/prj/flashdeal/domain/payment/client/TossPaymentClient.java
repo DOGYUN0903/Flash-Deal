@@ -10,11 +10,15 @@ import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.HttpClientErrorException;
+import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
 
 import com.prj.flashdeal.domain.payment.exception.PaymentErrorCode;
 import com.prj.flashdeal.domain.payment.exception.PaymentException;
 
+import lombok.extern.slf4j.Slf4j;
+
+@Slf4j
 @Component
 public class TossPaymentClient {
 
@@ -53,6 +57,10 @@ public class TossPaymentClient {
                 String.class
             );
         } catch (HttpClientErrorException e) {
+            log.error("Toss 결제 승인 실패 - status: {}, body: {}", e.getStatusCode(), e.getResponseBodyAsString());
+            throw new PaymentException(PaymentErrorCode.TOSS_CONFIRM_FAILED);
+        } catch (RestClientException e) {
+            log.error("Toss API 통신 오류: {}", e.getMessage());
             throw new PaymentException(PaymentErrorCode.TOSS_CONFIRM_FAILED);
         }
     }
