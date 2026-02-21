@@ -84,7 +84,7 @@ dev                  <- 통합 브랜치 (이 문서)
 | 버전 | 기술 | 목적 |
 |------|------|------|
 | V2 | Redis, Nginx | 세션 공유, 로드밸런싱 |
-| V3 | Kafka, Resilience4j | 비동기 알림, Circuit Breaker |
+| V3 | Kafka, Resilience4j | 서비스 간 이벤트 버스, Circuit Breaker |
 
 ---
 
@@ -138,13 +138,14 @@ dev                  <- 통합 브랜치 (이 문서)
    +-----+-----+
    | MySQL      |
    | Redis      |  <- 세션 공유
-   | Mailhog    |  <- 알림 (동기)
-   +-----------+
+   +------------+
 ```
 
 > 📸 **[이미지]** V2 구현 후 추가 → `docs/images/v2-architecture.png`
 
-**개선 내용:** 비관적 락 / 트랜잭션 분리 / Spring Session + Redis / 10,000명 동기 알림 도입
+**개선 내용:** 비관적 락 / 트랜잭션 분리 / Spring Session + Redis
+
+**V2에서 발견되는 새 문제:** 딜 구매 트래픽 폭증 → 공유 MySQL 포화 → 상품 조회·주문 API까지 함께 느려짐 (Cascading Failure) → V3 MSA 분리의 근거
 
 ---
 
@@ -157,18 +158,26 @@ dev                  <- 통합 브랜치 (이 문서)
          |
     [Nginx LB]
          |
-    +----+--------+
-    |              |
-[메인 서비스]  [딜 서비스]
-상품/주문/회원  한정판 딜
-[Main MySQL]  [Deal MySQL]
-Resilience4j  [Redis: 재고]
-Circuit Breaker [Kafka: 알림]
+    +----+------------------+
+    |                       |
+[메인 서비스]           [딜 서비스]
+상품/주문/회원           한정판 딜 구매
+[Main MySQL]            [Deal MySQL]
+    |                   [Redis: 재고 DECR]
+    |                       |
+    +------- Kafka ----------+
+           (이벤트 버스)
+  deal.purchased 이벤트 발행
+    -> 메인 서비스 주문 생성
+    -> 딜 서비스 재고 확정
+
+Resilience4j Circuit Breaker
+  딜 서비스 장애 시 메인 서비스 즉시 격리
 ```
 
 > 📸 **[이미지]** V3 구현 후 추가 → `docs/images/v3-architecture.png`
 
-**개선 내용:** Redis Lua 재고 관리 / Kafka 알림 / DB 분리 / Circuit Breaker
+**개선 내용:** Redis Lua 재고 관리 / Kafka 서비스 간 이벤트 / DB 분리 / Circuit Breaker
 
 ---
 
@@ -402,18 +411,38 @@ return redis.call('DECR', KEYS[1])
 
 ---
 
-### 6-5. 대량 알림: Kafka vs @Async
+### 6-5. MSA 서비스 간 통신: Kafka 이벤트 버스
 
-> V2: 10,000명 동기 발송 -> 500초 블로킹 문제
+> V3: 딜 서비스 분리 후 서비스 간 통신 방식 결정
 
-| 방식 | 처리 시간 | 메시지 유실 | 결정 |
-|------|----------|-----------|------|
-| 동기 SMTP (V2) | ~500초 | 없음 | 문제 재현용 |
-| @Async + ThreadPool | ~50초 | 서버 재시작 시 유실 | X |
-| Kafka Consumer (V3) | ~30초 | 없음 (내구성 보장) | V3 채택 |
+**문제 상황:** 딜 서비스를 MSA로 분리했는데, 서비스 간 통신을 동기 HTTP로 하면?
+- 딜 서비스 장애 → 메인 서비스도 대기 → 분리의 의미가 없음
 
-**@Async를 버린 이유:** 딜 오픈 알림은 유실이 허용되지 않는다.
-서버 재시작 시 큐에 남은 메시지가 사라지는 위험을 감수할 수 없다.
+| 방식 | 장점 | 단점 | 결정 |
+|------|------|------|------|
+| 동기 HTTP (REST) | 구현 단순, 즉각 응답 | 딜 서비스 장애 시 메인 서비스도 블로킹 | X |
+| @Async + REST | 논블로킹 | 서버 재시작 시 유실, 재시도 로직 복잡 | X |
+| Kafka 이벤트 버스 | 느슨한 결합, 장애 격리, 메시지 내구성 | 인프라 복잡도 증가 | V3 채택 |
+
+**Kafka 이벤트 플로우:**
+```
+[딜 서비스]
+  딜 구매 처리 (재고 차감)
+  -> Kafka 발행: "deal.purchased"
+     { memberId, dealId, dealPrice, quantity }
+
+[메인 서비스] Kafka Consumer
+  "deal.purchased" 구독
+  -> 주문 생성 (Order: PAID 상태)
+  -> 결제 기록
+
+딜 서비스 장애 발생 시:
+  메인 서비스는 정상 동작 유지
+  Kafka에 메시지가 쌓이고
+  딜 서비스 복구 후 순차 처리 (유실 없음)
+```
+
+**채택 근거:** 한정판 딜 구매는 데이터 유실이 허용되지 않는다. 동기 HTTP는 딜 서비스 장애가 메인 서비스로 전파되는 문제가 있어 MSA의 핵심 목표인 장애 격리를 달성할 수 없다.
 
 ---
 
@@ -426,7 +455,7 @@ return redis.call('DECR', KEYS[1])
 | 재고 정합성 | **음수 발생** | 정확 (비관적 락) | 정확 (Redis) |
 | 딜 TPS | ~13 | ~500 | ~5,000 |
 | 딜 장애 -> 메인 서비스 | 함께 다운 | 느려짐 | 정상 (CB) |
-| 알림 10,000명 발송 | 미구현 | ~500초 | ~30초 |
+| 서비스 간 통신 | 단일 서버 | 동기 HTTP | Kafka 이벤트 |
 
 > V2, V3 수치는 예상값 — 부하테스트 실행 후 실측값으로 업데이트 예정
 
@@ -460,6 +489,21 @@ return redis.call('DECR', KEYS[1])
 
 ## 8. 트러블슈팅
 
+### V1 개선 포인트 요약
+
+V1은 문제를 의도적으로 재현하는 단계이므로, 아래 이슈들을 인지한 상태에서 V2에서 순차 해결한다.
+
+| # | 분류 | 문제 | 해결 버전 |
+|---|------|------|---------|
+| 1 | 동시성 | 재고 Race Condition — 락 없는 SELECT | V2 |
+| 2 | 트랜잭션 | 결제 클라이언트가 TX 내부에서 DB 커넥션 점유 | V2 |
+| 3 | N+1 쿼리 | 딜 목록 조회 시 상품 정보 N번 추가 쿼리 | V2 |
+| 4 | 인덱스 부재 | deleted_at, open_time/end_time 컬럼 Full Scan | V2 |
+| 5 | 중복 구매 | 같은 유저가 같은 딜 중복 구매 가능 | V2 |
+| 6 | 장애 격리 없음 | 딜 서비스 과부하 → 전체 서비스 마비 | V3 |
+
+---
+
 ### [V1] Race Condition: 재고가 음수가 된다
 
 **증상:** 재고 100개인 딜에 5,000명 동시 요청 -> 최종 재고 음수 (-47 등)
@@ -492,6 +536,79 @@ deal.decreaseStock(1);  // Thread B -> stock=0 저장 (실제론 -1이어야 함
 **해결 (V2):** 트랜잭션 분리로 커넥션 점유 시간 750ms -> 5ms 단축
 
 > 📸 `docs/v1/grafana-hikaricp-exhausted.png` — pending 연결 수 급등 캡처
+
+---
+
+### [V1] N+1 쿼리: 딜 목록 조회 시 쿼리가 N+1번 나간다
+
+**증상:** `GET /api/deals` 호출 시 딜 10개면 쿼리 11번 실행
+
+**원인:**
+```java
+// DealRepository: 딜 목록 1번 조회
+dealRepository.findAllByDeletedAtIsNull(pageable);  // 쿼리 1번
+
+// DealSummaryResponse.from(deal) 내부:
+deal.getProduct().getName()  // 딜마다 Product 지연 로딩 → 쿼리 N번
+```
+
+```sql
+-- 실제 발생하는 쿼리
+SELECT * FROM deal WHERE deleted_at IS NULL LIMIT 10;  -- 1번
+SELECT * FROM product WHERE product_id = 1;             -- deal 1
+SELECT * FROM product WHERE product_id = 2;             -- deal 2
+SELECT * FROM product WHERE product_id = 3;             -- deal 3
+-- ... 총 N+1번
+```
+
+**해결 (V2):** `JOIN FETCH` 또는 `@EntityGraph`로 한 번에 조회
+```java
+@Query("SELECT d FROM Deal d JOIN FETCH d.product WHERE d.deletedAt IS NULL")
+Page<Deal> findAllWithProduct(Pageable pageable);
+```
+
+---
+
+### [V1] 인덱스 부재: 딜 조회가 항상 Full Scan이다
+
+**증상:** 딜 데이터가 많아질수록 `GET /api/deals` 응답 시간 선형 증가
+
+**원인:** 자주 사용하는 WHERE 조건 컬럼에 인덱스 없음
+
+```sql
+-- findAllByDeletedAtIsNull → deleted_at Full Scan
+SELECT * FROM deal WHERE deleted_at IS NULL;
+
+-- isOpen() 체크 → open_time, end_time Full Scan
+SELECT * FROM deal WHERE open_time <= NOW() AND end_time > NOW();
+```
+
+**해결 (V2):** 엔티티에 인덱스 추가
+```java
+@Table(name = "deal", indexes = {
+    @Index(name = "idx_deal_deleted_at", columnList = "deleted_at"),
+    @Index(name = "idx_deal_open_time",  columnList = "open_time"),
+    @Index(name = "idx_deal_end_time",   columnList = "end_time")
+})
+```
+
+---
+
+### [V1] 중복 구매 미방지: 같은 딜을 여러 번 살 수 있다
+
+**증상:** 동일 유저가 `POST /api/deals/1/purchase` 반복 호출 → 재고 과다 차감
+
+**원인:** 구매 전 중복 여부 체크 로직 없음
+
+**해결 (V2):**
+```java
+// 서비스 레벨 중복 체크
+boolean alreadyPurchased = orderRepository
+    .existsByMemberIdAndDealId(memberId, dealId);
+if (alreadyPurchased) {
+    throw new DealException(DealErrorCode.ALREADY_PURCHASED);
+}
+```
 
 ---
 
