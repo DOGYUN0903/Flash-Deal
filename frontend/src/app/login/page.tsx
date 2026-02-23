@@ -22,7 +22,7 @@ export default function LoginPage() {
     try {
       const res = await authApi.login({ email, password });
       toast.success(`${res.data.name}님 환영합니다!`);
-      router.push(res.data.role === "ADMIN" ? "/admin" : "/deals");
+      router.push(res.data.role === "ADMIN" ? "/admin" : "/products");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "로그인에 실패했습니다.");
     } finally {
