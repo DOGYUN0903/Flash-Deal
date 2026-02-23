@@ -13,7 +13,7 @@ export default function CategoryTab() {
 
   return (
     <div className="border-b bg-white">
-      <div className="max-w-6xl mx-auto px-4 flex gap-0">
+      <div className="max-w-7xl mx-auto px-4 flex gap-0">
         {TABS.map((tab) => {
           const isActive = pathname.startsWith(tab.href);
           return (

@@ -128,7 +128,7 @@ export default function ProductDetailPage() {
     <div>
       <Header />
       <CategoryTab />
-      <div className="max-w-6xl mx-auto px-4 py-8">
+      <div className="max-w-7xl mx-auto px-4 py-8">
         {/* 뒤로가기 */}
         <button
           onClick={() => router.back()}

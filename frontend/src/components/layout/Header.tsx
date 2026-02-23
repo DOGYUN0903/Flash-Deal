@@ -35,7 +35,7 @@ export default function Header() {
 
   return (
     <header className="border-b bg-white sticky top-0 z-10">
-      <div className="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
+      <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
         <Link href="/products" className="flex items-center gap-2">
           <Image
             src="/images/flashdeal.png"
