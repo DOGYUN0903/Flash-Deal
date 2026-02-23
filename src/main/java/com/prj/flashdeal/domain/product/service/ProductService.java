@@ -1,5 +1,6 @@
 package com.prj.flashdeal.domain.product.service;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -26,6 +27,9 @@ public class ProductService {
 
     private final ProductRepository productRepository;
 
+    @Value("${ncp.object-storage.default-image-url}")
+    private String defaultImageUrl;
+
     // ---------------- Admin 전용 비즈니스 로직 ----------------
     @Transactional
     public ProductResponse createProduct(ProductCreateRequest request, String imageUrl) {
@@ -36,9 +40,7 @@ public class ProductService {
             .stock(request.getStock())
             .build();
 
-        if (imageUrl != null) {
-            product.updateImageUrl(imageUrl);
-        }
+        product.updateImageUrl(imageUrl != null ? imageUrl : defaultImageUrl);
 
         return ProductResponse.from(productRepository.save(product));
     }

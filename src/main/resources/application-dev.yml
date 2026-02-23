@@ -31,3 +31,4 @@ ncp:
     access-key: ${NCP_ACCESS_KEY:}
     secret-key: ${NCP_SECRET_KEY:}
     bucket: ${NCP_BUCKET:flash-deal-images}
+    default-image-url: ${NCP_DEFAULT_IMAGE_URL:https://kr.object.ncloudstorage.com/flash-deal-images/default.png}
