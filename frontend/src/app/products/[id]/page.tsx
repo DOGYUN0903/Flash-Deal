@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { toast } from "sonner";
-import { ArrowLeft, ShoppingCart, Zap, Star } from "lucide-react";
+import { ArrowLeft, ShoppingCart, Zap, Star, Minus, Plus } from "lucide-react";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -51,6 +51,7 @@ export default function ProductDetailPage() {
 
   const [product, setProduct] = useState<ProductDetail | null>(null);
   const [loading, setLoading] = useState(true);
+  const [quantity, setQuantity] = useState(1);
   const [adding, setAdding] = useState(false);
   const [buying, setBuying] = useState(false);
 
@@ -151,16 +152,43 @@ export default function ProductDetailPage() {
 
           {/* 우측: 상품 정보 */}
           <div className="flex flex-col gap-4">
-            <div className="flex items-start justify-between gap-3">
+            <div className="flex items-start gap-3">
               <h1 className="text-2xl font-bold">{product.name}</h1>
-              <Badge variant={status.variant}>{status.label}</Badge>
+              {product.status !== "ON_SALE" && (
+                <Badge variant={status.variant} className="mt-1 shrink-0">{status.label}</Badge>
+              )}
             </div>
 
             <p className="text-3xl font-bold text-blue-600">
               {product.price.toLocaleString("ko-KR")}원
             </p>
 
-            <div className="flex flex-col gap-3 mt-4">
+            {/* 수량 선택 */}
+            <div className="flex items-center gap-3 mt-2">
+              <span className="text-sm font-medium text-gray-700">수량</span>
+              <div className="flex items-center border rounded-lg overflow-hidden">
+                <button
+                  type="button"
+                  className="w-9 h-9 flex items-center justify-center text-gray-600 hover:bg-gray-100 disabled:opacity-40 transition-colors"
+                  onClick={() => setQuantity((q) => Math.max(1, q - 1))}
+                  disabled={quantity <= 1}
+                >
+                  <Minus size={14} />
+                </button>
+                <span className="w-10 text-center text-sm font-medium">{quantity}</span>
+                <button
+                  type="button"
+                  className="w-9 h-9 flex items-center justify-center text-gray-600 hover:bg-gray-100 disabled:opacity-40 transition-colors"
+                  onClick={() => setQuantity((q) => Math.min(product.stockQuantity, q + 1))}
+                  disabled={quantity >= product.stockQuantity}
+                >
+                  <Plus size={14} />
+                </button>
+              </div>
+              <span className="text-sm text-gray-400">재고 {product.stockQuantity.toLocaleString("ko-KR")}개</span>
+            </div>
+
+            <div className="flex flex-col gap-3 mt-2">
               <Button
                 size="lg"
                 className="gap-2"
@@ -168,7 +196,7 @@ export default function ProductDetailPage() {
                 onClick={async () => {
                   setBuying(true);
                   try {
-                    const res = await orderApi.directOrder(product.productId, 1);
+                    const res = await orderApi.directOrder(product.productId, quantity);
                     router.push(`/payment?orderId=${res.data.orderId}`);
                   } catch (err) {
                     toast.error(err instanceof Error ? err.message : "즉시 구매에 실패했습니다.");
@@ -188,7 +216,7 @@ export default function ProductDetailPage() {
                 onClick={async () => {
                   setAdding(true);
                   try {
-                    await cartApi.addItem(product.productId, 1);
+                    await cartApi.addItem(product.productId, quantity);
                     toast.success("장바구니에 담았습니다.");
                   } catch (err) {
                     toast.error(err instanceof Error ? err.message : "장바구니 담기에 실패했습니다.");
