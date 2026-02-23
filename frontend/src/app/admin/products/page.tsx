@@ -31,31 +31,23 @@ const STATUS_LABEL: Record<string, { label: string; variant: "default" | "second
   SOLD_OUT:  { label: "품절",       variant: "destructive" },
 };
 
-const EMPTY_FORM = { name: "", description: "", price: "", stock: "", imageUrl: "" };
+const EMPTY_FORM = { name: "", description: "", price: "", stock: "" };
 
-function ImageUploader({
-  currentUrl,
-  onUploaded,
+function ImagePicker({
+  existingUrl,
+  onFileChange,
 }: {
-  currentUrl: string;
-  onUploaded: (url: string) => void;
+  existingUrl?: string | null;
+  onFileChange: (file: File | null) => void;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
-  const [uploading, setUploading] = useState(false);
+  const [preview, setPreview] = useState<string | null>(existingUrl ?? null);
 
-  const handleFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setUploading(true);
-    try {
-      const url = await adminApi.uploadImage(file);
-      onUploaded(url);
-      toast.success("이미지가 업로드되었습니다.");
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "이미지 업로드에 실패했습니다.");
-    } finally {
-      setUploading(false);
-      if (inputRef.current) inputRef.current.value = "";
+  const handleFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0] ?? null;
+    onFileChange(file);
+    if (file) {
+      setPreview(URL.createObjectURL(file));
     }
   };
 
@@ -66,23 +58,16 @@ function ImageUploader({
         className="relative w-full h-40 bg-gray-100 rounded-lg border-2 border-dashed border-gray-300 flex items-center justify-center cursor-pointer hover:border-gray-400 transition-colors overflow-hidden"
         onClick={() => inputRef.current?.click()}
       >
-        {currentUrl ? (
-          <Image src={currentUrl} alt="상품 이미지" fill className="object-cover rounded-lg" />
+        {preview ? (
+          <Image src={preview} alt="상품 이미지" fill className="object-cover rounded-lg" unoptimized />
         ) : (
           <div className="flex flex-col items-center gap-1 text-gray-400">
             <ImagePlus size={28} />
-            <span className="text-sm">{uploading ? "업로드 중..." : "클릭하여 이미지 선택"}</span>
+            <span className="text-sm">클릭하여 이미지 선택</span>
           </div>
         )}
       </div>
-      <input
-        ref={inputRef}
-        type="file"
-        accept="image/*"
-        className="hidden"
-        onChange={handleFile}
-        disabled={uploading}
-      />
+      <input ref={inputRef} type="file" accept="image/*" className="hidden" onChange={handleFile} />
     </div>
   );
 }
@@ -95,10 +80,12 @@ export default function AdminProductsPage() {
 
   const [createOpen, setCreateOpen] = useState(false);
   const [createForm, setCreateForm] = useState(EMPTY_FORM);
+  const [createImage, setCreateImage] = useState<File | null>(null);
   const [creating, setCreating] = useState(false);
 
   const [editTarget, setEditTarget] = useState<AdminProductDetail | null>(null);
   const [editForm, setEditForm] = useState(EMPTY_FORM);
+  const [editImage, setEditImage] = useState<File | null>(null);
   const [editing, setEditing] = useState(false);
 
   const fetchProducts = (p = page) => {
@@ -119,16 +106,19 @@ export default function AdminProductsPage() {
     e.preventDefault();
     setCreating(true);
     try {
-      await adminApi.createProduct({
-        name: createForm.name,
-        description: createForm.description,
-        price: Number(createForm.price),
-        stock: Number(createForm.stock),
-        imageUrl: createForm.imageUrl || undefined,
-      });
+      await adminApi.createProduct(
+        {
+          name: createForm.name,
+          description: createForm.description,
+          price: Number(createForm.price),
+          stock: Number(createForm.stock),
+        },
+        createImage
+      );
       toast.success("상품이 등록되었습니다.");
       setCreateOpen(false);
       setCreateForm(EMPTY_FORM);
+      setCreateImage(null);
       fetchProducts(0);
       setPage(0);
     } catch (err) {
@@ -147,8 +137,8 @@ export default function AdminProductsPage() {
         description: res.data.description,
         price: String(res.data.price),
         stock: String(res.data.stockQuantity),
-        imageUrl: res.data.imageUrl ?? "",
       });
+      setEditImage(null);
     } catch {
       toast.error("상품 정보를 불러오지 못했습니다.");
     }
@@ -159,15 +149,19 @@ export default function AdminProductsPage() {
     if (!editTarget) return;
     setEditing(true);
     try {
-      await adminApi.updateProduct(editTarget.productId, {
-        name: editForm.name,
-        description: editForm.description,
-        price: Number(editForm.price),
-        stock: Number(editForm.stock),
-        imageUrl: editForm.imageUrl || undefined,
-      });
+      await adminApi.updateProduct(
+        editTarget.productId,
+        {
+          name: editForm.name,
+          description: editForm.description,
+          price: Number(editForm.price),
+          stock: Number(editForm.stock),
+        },
+        editImage
+      );
       toast.success("상품이 수정되었습니다.");
       setEditTarget(null);
+      setEditImage(null);
       fetchProducts(page);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "수정에 실패했습니다.");
@@ -271,16 +265,13 @@ export default function AdminProductsPage() {
       )}
 
       {/* 상품 등록 모달 */}
-      <Dialog open={createOpen} onOpenChange={setCreateOpen}>
+      <Dialog open={createOpen} onOpenChange={(open) => { setCreateOpen(open); if (!open) { setCreateForm(EMPTY_FORM); setCreateImage(null); } }}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>상품 등록</DialogTitle>
           </DialogHeader>
           <form onSubmit={handleCreate} className="space-y-4">
-            <ImageUploader
-              currentUrl={createForm.imageUrl}
-              onUploaded={(url) => setCreateForm({ ...createForm, imageUrl: url })}
-            />
+            <ImagePicker onFileChange={setCreateImage} />
             <div className="space-y-2">
               <Label>상품명</Label>
               <Input value={createForm.name} onChange={(e) => setCreateForm({ ...createForm, name: e.target.value })} required />
@@ -308,16 +299,13 @@ export default function AdminProductsPage() {
       </Dialog>
 
       {/* 상품 수정 모달 */}
-      <Dialog open={!!editTarget} onOpenChange={(open) => { if (!open) setEditTarget(null); }}>
+      <Dialog open={!!editTarget} onOpenChange={(open) => { if (!open) { setEditTarget(null); setEditImage(null); } }}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>상품 수정</DialogTitle>
           </DialogHeader>
           <form onSubmit={handleEdit} className="space-y-4">
-            <ImageUploader
-              currentUrl={editForm.imageUrl}
-              onUploaded={(url) => setEditForm({ ...editForm, imageUrl: url })}
-            />
+            <ImagePicker existingUrl={editTarget?.imageUrl} onFileChange={setEditImage} />
             <div className="space-y-2">
               <Label>상품명</Label>
               <Input value={editForm.name} onChange={(e) => setEditForm({ ...editForm, name: e.target.value })} required />

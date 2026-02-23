@@ -28,13 +28,17 @@ public class ProductService {
 
     // ---------------- Admin 전용 비즈니스 로직 ----------------
     @Transactional
-    public ProductResponse createProduct(ProductCreateRequest request) {
+    public ProductResponse createProduct(ProductCreateRequest request, String imageUrl) {
         Product product = Product.builder()
             .name(request.getName())
             .description(request.getDescription())
             .price(request.getPrice())
             .stock(request.getStock())
             .build();
+
+        if (imageUrl != null) {
+            product.updateImageUrl(imageUrl);
+        }
 
         return ProductResponse.from(productRepository.save(product));
     }
@@ -52,7 +56,7 @@ public class ProductService {
     }
 
     @Transactional
-    public ProductResponse updateProduct(Long productId, ProductUpdateRequest request) {
+    public ProductResponse updateProduct(Long productId, ProductUpdateRequest request, String imageUrl) {
         Product product = getProduct(productId);
 
         product.updateInfo(
@@ -65,8 +69,8 @@ public class ProductService {
             product.updateStock(request.getStock());
         }
 
-        if (request.getImageUrl() != null) {
-            product.updateImageUrl(request.getImageUrl());
+        if (imageUrl != null) {
+            product.updateImageUrl(imageUrl);
         }
 
         return ProductResponse.from(product);

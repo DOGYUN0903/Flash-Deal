@@ -11,5 +11,4 @@ public class ProductUpdateRequest {
     private String description;
     private Integer price;
     private Integer stock;
-    private String imageUrl;
 }

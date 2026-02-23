@@ -1,9 +1,9 @@
 package com.prj.flashdeal.domain.product.controller;
 
-
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -11,10 +11,12 @@ import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 
+import com.prj.flashdeal.domain.file.service.FileService;
 import com.prj.flashdeal.domain.product.dto.request.ProductCreateRequest;
 import com.prj.flashdeal.domain.product.dto.request.ProductSearchCondForAdmin;
 import com.prj.flashdeal.domain.product.dto.request.ProductUpdateRequest;
@@ -33,14 +35,18 @@ import lombok.RequiredArgsConstructor;
 public class AdminProductController {
 
     private final ProductService productService;
+    private final FileService fileService;
 
-    @PostMapping
+    @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<ApiResponse<ProductResponse>> createProduct(
-        @Valid @RequestBody ProductCreateRequest request) {
+        @RequestPart("data") @Valid ProductCreateRequest request,
+        @RequestPart(value = "image", required = false) MultipartFile image
+    ) {
+        String imageUrl = (image != null && !image.isEmpty()) ? fileService.uploadFile(image) : null;
         return ApiResponse.success(
             HttpStatus.CREATED,
             "상품 등록이 완료되었습니다.",
-            productService.createProduct(request)
+            productService.createProduct(request, imageUrl)
         );
     }
 
@@ -67,15 +73,17 @@ public class AdminProductController {
         );
     }
 
-    @PatchMapping("/{productId}")
+    @PatchMapping(value = "/{productId}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<ApiResponse<ProductResponse>> updateProduct(
         @PathVariable Long productId,
-        @RequestBody ProductUpdateRequest request
+        @RequestPart("data") ProductUpdateRequest request,
+        @RequestPart(value = "image", required = false) MultipartFile image
     ) {
+        String imageUrl = (image != null && !image.isEmpty()) ? fileService.uploadFile(image) : null;
         return ApiResponse.success(
             HttpStatus.OK,
             "상품 수정이 완료되었습니다.",
-            productService.updateProduct(productId, request)
+            productService.updateProduct(productId, request, imageUrl)
         );
     }
 
@@ -84,7 +92,6 @@ public class AdminProductController {
         @PathVariable Long productId
     ) {
         productService.deleteProduct(productId);
-
         return ApiResponse.success(
             HttpStatus.OK,
             "상품이 삭제되었습니다.",

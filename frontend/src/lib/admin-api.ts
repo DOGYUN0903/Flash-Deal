@@ -1,19 +1,6 @@
 import { api } from "./api";
 import { ApiResponse, PageResponse } from "./types";
 
-async function uploadFile(file: File): Promise<string> {
-  const formData = new FormData();
-  formData.append("file", file);
-  const res = await fetch("/api/files", {
-    method: "POST",
-    credentials: "include",
-    body: formData,
-  });
-  if (!res.ok) throw new Error("이미지 업로드에 실패했습니다.");
-  const json: ApiResponse<{ url: string }> = await res.json();
-  return json.data.url;
-}
-
 export interface AdminProductSummary {
   productId: number;
   name: string;
@@ -38,7 +25,6 @@ export interface ProductCreateBody {
   description: string;
   price: number;
   stock: number;
-  imageUrl?: string;
 }
 
 export interface ProductUpdateBody {
@@ -46,7 +32,6 @@ export interface ProductUpdateBody {
   description?: string;
   price?: number;
   stock?: number;
-  imageUrl?: string;
 }
 
 export interface DealCreateBody {
@@ -77,6 +62,28 @@ export interface AdminOrderSummary {
   createdAt: string;
 }
 
+async function multipartRequest<T>(
+  url: string,
+  method: "POST" | "PATCH",
+  data: object,
+  image?: File | null
+): Promise<T> {
+  const formData = new FormData();
+  formData.append("data", new Blob([JSON.stringify(data)], { type: "application/json" }));
+  if (image) formData.append("image", image);
+
+  const res = await fetch(url, { method, credentials: "include", body: formData });
+
+  if (res.status === 401) {
+    window.location.href = "/login";
+    throw new Error("로그인이 필요합니다.");
+  }
+
+  const json = await res.json();
+  if (!res.ok) throw new Error(json?.message ?? "요청에 실패했습니다.");
+  return json;
+}
+
 export const adminApi = {
   // 상품
   getProducts: (page = 0, size = 10) =>
@@ -87,16 +94,18 @@ export const adminApi = {
   getProduct: (productId: number) =>
     api.get<ApiResponse<AdminProductDetail>>(`/api/admin/products/${productId}`),
 
-  createProduct: (body: ProductCreateBody) =>
-    api.post<ApiResponse<AdminProductDetail>>("/api/admin/products", body),
+  createProduct: (body: ProductCreateBody, image?: File | null) =>
+    multipartRequest<ApiResponse<AdminProductDetail>>(
+      "/api/admin/products", "POST", body, image
+    ),
 
-  updateProduct: (productId: number, body: ProductUpdateBody) =>
-    api.patch<ApiResponse<AdminProductDetail>>(`/api/admin/products/${productId}`, body),
+  updateProduct: (productId: number, body: ProductUpdateBody, image?: File | null) =>
+    multipartRequest<ApiResponse<AdminProductDetail>>(
+      `/api/admin/products/${productId}`, "PATCH", body, image
+    ),
 
   deleteProduct: (productId: number) =>
     api.delete<ApiResponse<void>>(`/api/admin/products/${productId}`),
-
-  uploadImage: uploadFile,
 
   // 딜
   createDeal: (body: DealCreateBody) =>
