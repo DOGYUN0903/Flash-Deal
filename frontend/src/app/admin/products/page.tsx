@@ -23,6 +23,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { Textarea } from "@/components/ui/textarea";
 import { adminApi, AdminProductSummary, AdminProductDetail } from "@/lib/admin-api";
 
 const STATUS_LABEL: Record<string, { label: string; variant: "default" | "secondary" | "destructive" }> = {
@@ -278,7 +279,7 @@ export default function AdminProductsPage() {
             </div>
             <div className="space-y-2">
               <Label>설명</Label>
-              <Input value={createForm.description} onChange={(e) => setCreateForm({ ...createForm, description: e.target.value })} />
+              <Textarea rows={5} value={createForm.description} onChange={(e) => setCreateForm({ ...createForm, description: e.target.value })} />
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-2">
@@ -312,7 +313,7 @@ export default function AdminProductsPage() {
             </div>
             <div className="space-y-2">
               <Label>설명</Label>
-              <Input value={editForm.description} onChange={(e) => setEditForm({ ...editForm, description: e.target.value })} />
+              <Textarea rows={5} value={editForm.description} onChange={(e) => setEditForm({ ...editForm, description: e.target.value })} />
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-2">

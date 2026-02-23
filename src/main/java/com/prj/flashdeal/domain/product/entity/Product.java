@@ -31,7 +31,7 @@ public class Product extends BaseEntity {
     @Column(nullable = false)
     private String name; // 상품 이름
 
-    @Column(nullable = false)
+    @Column(nullable = false, columnDefinition = "LONGTEXT")
     private String description; // 상품 설명
 
     @Column(nullable = false)
