@@ -70,6 +70,7 @@ export interface ProductDetail {
   name: string;
   description: string;
   price: number;
+  stockQuantity: number;
   status: string;
   imageUrl: string | null;
 }

@@ -8,6 +8,7 @@ public record ProductResponseForUser(
     String name,
     String description,
     Integer price,
+    Integer stockQuantity,
     ProductStatus status,
     String imageUrl
 ) {
@@ -17,6 +18,7 @@ public record ProductResponseForUser(
             product.getName(),
             product.getDescription(),
             product.getPrice(),
+            product.getStockQuantity(),
             product.getStatus(),
             product.getImageUrl()
         );
