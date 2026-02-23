@@ -19,7 +19,7 @@ export default function Header() {
   const handleLogout = async () => {
     await authApi.logout();
     setIsLoggedIn(false);
-    router.push("/login");
+    router.push("/");
   };
 
   return (
