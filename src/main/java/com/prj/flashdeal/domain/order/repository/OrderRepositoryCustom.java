@@ -1,5 +1,6 @@
 package com.prj.flashdeal.domain.order.repository;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -25,4 +26,9 @@ public interface OrderRepositoryCustom {
      * 회원별 주문 목록 조회 - DTO Projection (페이징)
      */
     Page<OrderSummaryResponse> findOrderSummariesByMember(Member member, Pageable pageable);
+
+    /**
+     * 만료된 PENDING 주문 조회 (스케줄러용)
+     */
+    List<Order> findExpiredPendingOrders(LocalDateTime expiredBefore);
 }

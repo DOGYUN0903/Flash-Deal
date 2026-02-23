@@ -3,6 +3,7 @@ package com.prj.flashdeal.domain.order.repository.impl;
 import static com.prj.flashdeal.domain.order.entity.QOrder.*;
 import static com.prj.flashdeal.domain.order.entity.QOrderItem.*;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -14,6 +15,7 @@ import org.springframework.stereotype.Repository;
 import com.prj.flashdeal.domain.member.entity.Member;
 import com.prj.flashdeal.domain.order.dto.response.OrderSummaryResponse;
 import com.prj.flashdeal.domain.order.entity.Order;
+import com.prj.flashdeal.domain.order.entity.OrderStatus;
 import com.prj.flashdeal.domain.order.repository.OrderRepositoryCustom;
 import com.querydsl.core.types.Projections;
 import com.querydsl.jpa.impl.JPAQuery;
@@ -99,5 +101,17 @@ public class OrderRepositoryCustomImpl implements OrderRepositoryCustom {
             .where(order.member.eq(member));
 
         return PageableExecutionUtils.getPage(content, pageable, countQuery::fetchOne);
+    }
+
+    @Override
+    public List<Order> findExpiredPendingOrders(LocalDateTime expiredBefore) {
+        return queryFactory
+            .selectFrom(order)
+            .join(order.orderItems, orderItem).fetchJoin()
+            .where(
+                order.status.eq(OrderStatus.PENDING),
+                order.createdAt.lt(expiredBefore)
+            )
+            .fetch();
     }
 }
