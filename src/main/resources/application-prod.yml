@@ -18,3 +18,16 @@ spring:
 toss:
   base-url: ${TOSS_BASE_URL}
   secret-key: ${TOSS_SECRET_KEY}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus,metrics
+  endpoint:
+    prometheus:
+      enabled: true
+  metrics:
+    export:
+      prometheus:
+        enabled: true
