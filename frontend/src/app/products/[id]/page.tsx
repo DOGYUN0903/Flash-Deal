@@ -160,16 +160,6 @@ export default function ProductDetailPage() {
               {product.price.toLocaleString("ko-KR")}원
             </p>
 
-            {product.description && (
-              <Card>
-                <CardContent className="pt-4">
-                  <p className="text-sm text-gray-600 leading-relaxed whitespace-pre-line">
-                    {product.description}
-                  </p>
-                </CardContent>
-              </Card>
-            )}
-
             <div className="flex flex-col gap-3 mt-4">
               <Button
                 size="lg"
@@ -213,6 +203,16 @@ export default function ProductDetailPage() {
             </div>
           </div>
         </div>
+
+        {/* 상품 상세설명 */}
+        {product.description && (
+          <div className="mt-12 border-t pt-10">
+            <h2 className="text-xl font-bold mb-6">상품 상세설명</h2>
+            <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-line">
+              {product.description}
+            </p>
+          </div>
+        )}
 
         {/* 리뷰 섹션 */}
         <div className="mt-16">
