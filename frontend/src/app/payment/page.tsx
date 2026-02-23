@@ -3,6 +3,7 @@
 import { useEffect, useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
+import { Clock } from "lucide-react";
 import { loadTossPayments, ANONYMOUS } from "@tosspayments/tosspayments-sdk";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -11,6 +12,13 @@ import { orderApi } from "@/lib/order-api";
 import { OrderDetail } from "@/lib/types";
 
 const CLIENT_KEY = process.env.NEXT_PUBLIC_TOSS_CLIENT_KEY!;
+const PAYMENT_TIMEOUT_SECONDS = 10 * 60; // 10분
+
+function formatTime(seconds: number) {
+  const m = Math.floor(seconds / 60).toString().padStart(2, "0");
+  const s = (seconds % 60).toString().padStart(2, "0");
+  return `${m}:${s}`;
+}
 
 function PaymentContent() {
   const router = useRouter();
@@ -20,7 +28,9 @@ function PaymentContent() {
   const [order, setOrder] = useState<OrderDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [paying, setPaying] = useState(false);
-  // 결제 시도마다 고유한 tossOrderId 생성 (중복 결제 방지)
+  const [timeLeft, setTimeLeft] = useState(PAYMENT_TIMEOUT_SECONDS);
+  const [expired, setExpired] = useState(false);
+
   const [tossOrderId] = useState(() =>
     `ORDER-${orderId}-${crypto.randomUUID().slice(0, 8)}`
   );
@@ -40,8 +50,28 @@ function PaymentContent() {
       .finally(() => setLoading(false));
   }, [orderId, router]);
 
+  // 카운트다운 타이머
+  useEffect(() => {
+    if (loading || expired) return;
+
+    const interval = setInterval(() => {
+      setTimeLeft((prev) => {
+        if (prev <= 1) {
+          clearInterval(interval);
+          setExpired(true);
+          toast.error("결제 시간이 만료되었습니다. 다시 시도해주세요.");
+          router.push("/orders");
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [loading, expired, router]);
+
   const handlePayment = async () => {
-    if (!order) return;
+    if (!order || expired) return;
     setPaying(true);
     try {
       const tossPayments = await loadTossPayments(CLIENT_KEY);
@@ -61,7 +91,6 @@ function PaymentContent() {
         failUrl: `${window.location.origin}/payment/fail`,
       });
     } catch (err: unknown) {
-      // 사용자가 결제창을 닫은 경우 등
       if (err && typeof err === "object" && "code" in err && (err as { code: string }).code !== "USER_CANCEL") {
         toast.error("결제 중 오류가 발생했습니다.");
       }
@@ -80,11 +109,30 @@ function PaymentContent() {
 
   if (!order) return null;
 
+  const isUrgent = timeLeft <= 60;
+
   return (
     <div>
       <Header />
       <div className="max-w-xl mx-auto px-4 py-8">
-        <h1 className="text-2xl font-bold mb-6">결제하기</h1>
+        <div className="flex items-center justify-between mb-6">
+          <h1 className="text-2xl font-bold">결제하기</h1>
+          {/* 카운트다운 타이머 */}
+          <div className={`flex items-center gap-2 px-4 py-2 rounded-lg font-mono font-bold text-lg border-2 transition-colors ${
+            isUrgent
+              ? "border-red-400 bg-red-50 text-red-600 animate-pulse"
+              : "border-orange-300 bg-orange-50 text-orange-600"
+          }`}>
+            <Clock size={18} />
+            {formatTime(timeLeft)}
+          </div>
+        </div>
+
+        {isUrgent && (
+          <p className="text-sm text-red-500 text-right -mt-4 mb-4">
+            곧 결제 시간이 만료됩니다!
+          </p>
+        )}
 
         <Card className="mb-4">
           <CardHeader>
@@ -109,7 +157,7 @@ function PaymentContent() {
           </CardContent>
         </Card>
 
-        <Button className="w-full" size="lg" onClick={handlePayment} disabled={paying}>
+        <Button className="w-full" size="lg" onClick={handlePayment} disabled={paying || expired}>
           {paying ? "결제창 이동 중..." : `${order.totalPrice.toLocaleString("ko-KR")}원 결제하기`}
         </Button>
       </div>
