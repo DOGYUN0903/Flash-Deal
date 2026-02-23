@@ -9,4 +9,9 @@ export const authApi = {
     api.post<ApiResponse<LoginResponse>>("/api/auth/signup", body),
 
   logout: () => api.post<ApiResponse<null>>("/api/auth/logout", {}),
+
+  checkAuth: async (): Promise<boolean> => {
+    const res = await fetch("/api/members/me", { credentials: "include" });
+    return res.ok;
+  },
 };
