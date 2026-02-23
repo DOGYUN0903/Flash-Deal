@@ -65,6 +65,10 @@ public class ProductService {
             product.updateStock(request.getStock());
         }
 
+        if (request.getImageUrl() != null) {
+            product.updateImageUrl(request.getImageUrl());
+        }
+
         return ProductResponse.from(product);
     }
 

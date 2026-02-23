@@ -1,12 +1,26 @@
 import { api } from "./api";
 import { ApiResponse, PageResponse } from "./types";
 
+async function uploadFile(file: File): Promise<string> {
+  const formData = new FormData();
+  formData.append("file", file);
+  const res = await fetch("/api/files", {
+    method: "POST",
+    credentials: "include",
+    body: formData,
+  });
+  if (!res.ok) throw new Error("이미지 업로드에 실패했습니다.");
+  const json: ApiResponse<{ url: string }> = await res.json();
+  return json.data.url;
+}
+
 export interface AdminProductSummary {
   productId: number;
   name: string;
   price: number;
   stockQuantity: number;
   status: string;
+  imageUrl: string | null;
 }
 
 export interface AdminProductDetail {
@@ -16,6 +30,7 @@ export interface AdminProductDetail {
   price: number;
   stockQuantity: number;
   status: string;
+  imageUrl: string | null;
 }
 
 export interface ProductCreateBody {
@@ -23,6 +38,7 @@ export interface ProductCreateBody {
   description: string;
   price: number;
   stock: number;
+  imageUrl?: string;
 }
 
 export interface ProductUpdateBody {
@@ -30,6 +46,7 @@ export interface ProductUpdateBody {
   description?: string;
   price?: number;
   stock?: number;
+  imageUrl?: string;
 }
 
 export interface DealCreateBody {
@@ -78,6 +95,8 @@ export const adminApi = {
 
   deleteProduct: (productId: number) =>
     api.delete<ApiResponse<void>>(`/api/admin/products/${productId}`),
+
+  uploadImage: uploadFile,
 
   // 딜
   createDeal: (body: DealCreateBody) =>

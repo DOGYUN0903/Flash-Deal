@@ -42,6 +42,7 @@ public class ProductRepositoryCustomImpl implements ProductRepositoryCustom {
                 product.price,
                 product.stockQuantity,
                 product.status,
+                product.imageUrl,
                 JPAExpressions.select(review.id.count())
                     .from(review)
                     .where(review.product.id.eq(product.id), review.isDeleted.isFalse()),
@@ -89,6 +90,7 @@ public class ProductRepositoryCustomImpl implements ProductRepositoryCustom {
                 product.price,
                 product.stockQuantity,
                 product.status,
+                product.imageUrl,
                 JPAExpressions.select(review.id.count())
                     .from(review)
                     .where(review.product.id.eq(product.id), review.isDeleted.isFalse()),

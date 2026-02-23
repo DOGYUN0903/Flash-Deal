@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
-import { Plus, Pencil, Trash2 } from "lucide-react";
+import { Plus, Pencil, Trash2, ImagePlus } from "lucide-react";
+import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -30,7 +31,61 @@ const STATUS_LABEL: Record<string, { label: string; variant: "default" | "second
   SOLD_OUT:  { label: "품절",       variant: "destructive" },
 };
 
-const EMPTY_FORM = { name: "", description: "", price: "", stock: "" };
+const EMPTY_FORM = { name: "", description: "", price: "", stock: "", imageUrl: "" };
+
+function ImageUploader({
+  currentUrl,
+  onUploaded,
+}: {
+  currentUrl: string;
+  onUploaded: (url: string) => void;
+}) {
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [uploading, setUploading] = useState(false);
+
+  const handleFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    try {
+      const url = await adminApi.uploadImage(file);
+      onUploaded(url);
+      toast.success("이미지가 업로드되었습니다.");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "이미지 업로드에 실패했습니다.");
+    } finally {
+      setUploading(false);
+      if (inputRef.current) inputRef.current.value = "";
+    }
+  };
+
+  return (
+    <div className="space-y-2">
+      <Label>상품 이미지</Label>
+      <div
+        className="relative w-full h-40 bg-gray-100 rounded-lg border-2 border-dashed border-gray-300 flex items-center justify-center cursor-pointer hover:border-gray-400 transition-colors overflow-hidden"
+        onClick={() => inputRef.current?.click()}
+      >
+        {currentUrl ? (
+          <Image src={currentUrl} alt="상품 이미지" fill className="object-cover rounded-lg" />
+        ) : (
+          <div className="flex flex-col items-center gap-1 text-gray-400">
+            <ImagePlus size={28} />
+            <span className="text-sm">{uploading ? "업로드 중..." : "클릭하여 이미지 선택"}</span>
+          </div>
+        )}
+      </div>
+      <input
+        ref={inputRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={handleFile}
+        disabled={uploading}
+      />
+    </div>
+  );
+}
 
 export default function AdminProductsPage() {
   const [products, setProducts] = useState<AdminProductSummary[]>([]);
@@ -38,12 +93,10 @@ export default function AdminProductsPage() {
   const [page, setPage] = useState(0);
   const [loading, setLoading] = useState(true);
 
-  // 등록 모달
   const [createOpen, setCreateOpen] = useState(false);
   const [createForm, setCreateForm] = useState(EMPTY_FORM);
   const [creating, setCreating] = useState(false);
 
-  // 수정 모달
   const [editTarget, setEditTarget] = useState<AdminProductDetail | null>(null);
   const [editForm, setEditForm] = useState(EMPTY_FORM);
   const [editing, setEditing] = useState(false);
@@ -71,6 +124,7 @@ export default function AdminProductsPage() {
         description: createForm.description,
         price: Number(createForm.price),
         stock: Number(createForm.stock),
+        imageUrl: createForm.imageUrl || undefined,
       });
       toast.success("상품이 등록되었습니다.");
       setCreateOpen(false);
@@ -93,6 +147,7 @@ export default function AdminProductsPage() {
         description: res.data.description,
         price: String(res.data.price),
         stock: String(res.data.stockQuantity),
+        imageUrl: res.data.imageUrl ?? "",
       });
     } catch {
       toast.error("상품 정보를 불러오지 못했습니다.");
@@ -109,6 +164,7 @@ export default function AdminProductsPage() {
         description: editForm.description,
         price: Number(editForm.price),
         stock: Number(editForm.stock),
+        imageUrl: editForm.imageUrl || undefined,
       });
       toast.success("상품이 수정되었습니다.");
       setEditTarget(null);
@@ -150,6 +206,7 @@ export default function AdminProductsPage() {
               <TableHeader>
                 <TableRow>
                   <TableHead>ID</TableHead>
+                  <TableHead>이미지</TableHead>
                   <TableHead>상품명</TableHead>
                   <TableHead className="text-right">가격</TableHead>
                   <TableHead className="text-right">재고</TableHead>
@@ -160,7 +217,7 @@ export default function AdminProductsPage() {
               <TableBody>
                 {products.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={6} className="text-center text-gray-400 py-10">
+                    <TableCell colSpan={7} className="text-center text-gray-400 py-10">
                       등록된 상품이 없습니다.
                     </TableCell>
                   </TableRow>
@@ -169,6 +226,15 @@ export default function AdminProductsPage() {
                   return (
                     <TableRow key={p.productId}>
                       <TableCell className="text-gray-500">{p.productId}</TableCell>
+                      <TableCell>
+                        {p.imageUrl ? (
+                          <div className="relative w-10 h-10 rounded overflow-hidden">
+                            <Image src={p.imageUrl} alt={p.name} fill className="object-cover" />
+                          </div>
+                        ) : (
+                          <div className="w-10 h-10 rounded bg-gray-100 flex items-center justify-center text-gray-300 text-xs">없음</div>
+                        )}
+                      </TableCell>
                       <TableCell className="font-medium">{p.name}</TableCell>
                       <TableCell className="text-right">{p.price.toLocaleString("ko-KR")}원</TableCell>
                       <TableCell className="text-right">{p.stockQuantity.toLocaleString("ko-KR")}</TableCell>
@@ -211,6 +277,10 @@ export default function AdminProductsPage() {
             <DialogTitle>상품 등록</DialogTitle>
           </DialogHeader>
           <form onSubmit={handleCreate} className="space-y-4">
+            <ImageUploader
+              currentUrl={createForm.imageUrl}
+              onUploaded={(url) => setCreateForm({ ...createForm, imageUrl: url })}
+            />
             <div className="space-y-2">
               <Label>상품명</Label>
               <Input value={createForm.name} onChange={(e) => setCreateForm({ ...createForm, name: e.target.value })} required />
@@ -244,6 +314,10 @@ export default function AdminProductsPage() {
             <DialogTitle>상품 수정</DialogTitle>
           </DialogHeader>
           <form onSubmit={handleEdit} className="space-y-4">
+            <ImageUploader
+              currentUrl={editForm.imageUrl}
+              onUploaded={(url) => setEditForm({ ...editForm, imageUrl: url })}
+            />
             <div className="space-y-2">
               <Label>상품명</Label>
               <Input value={editForm.name} onChange={(e) => setEditForm({ ...editForm, name: e.target.value })} required />

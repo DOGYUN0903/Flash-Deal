@@ -8,6 +8,7 @@ public record ProductSummaryResponse(
     Integer price,
     Integer stockQuantity,
     ProductStatus status,
+    String imageUrl,
     Long reviewCount,
     Double averageRating
 ) {}

@@ -44,6 +44,9 @@ public class Product extends BaseEntity {
     @Column(nullable = false)
     private ProductStatus status; // 상품 상태(판매 준비중, 판매중, 품절)
 
+    @Column
+    private String imageUrl;
+
     @Override
     public void delete() {
         if (this.stockQuantity > 0) {
@@ -96,6 +99,10 @@ public class Product extends BaseEntity {
         } else {
             this.status = ProductStatus.ON_SALE;
         }
+    }
+
+    public void updateImageUrl(String imageUrl) {
+        this.imageUrl = imageUrl;
     }
 
     public void updateInfo(String name, String description, Integer price) {

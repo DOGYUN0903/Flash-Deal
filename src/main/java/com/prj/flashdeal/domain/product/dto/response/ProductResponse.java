@@ -9,7 +9,8 @@ public record ProductResponse(
     String description,
     Integer price,
     Integer stockQuantity,
-    ProductStatus status
+    ProductStatus status,
+    String imageUrl
 ) {
     public static ProductResponse from(Product product) {
         return new ProductResponse(
@@ -18,7 +19,8 @@ public record ProductResponse(
             product.getDescription(),
             product.getPrice(),
             product.getStockQuantity(),
-            product.getStatus()
+            product.getStatus(),
+            product.getImageUrl()
         );
     }
 }

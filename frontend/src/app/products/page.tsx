@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Search, Star } from "lucide-react";
+import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -89,9 +90,13 @@ export default function ProductsPage() {
               {products.map((product) => (
                 <Link href={`/products/${product.productId}`} key={product.productId}>
                   <div className="group cursor-pointer">
-                    {/* 이미지 자리 */}
-                    <div className="aspect-square bg-gray-100 rounded-lg mb-3 overflow-hidden group-hover:opacity-90 transition-opacity flex items-center justify-center text-gray-300 text-sm">
-                      이미지 없음
+                    {/* 이미지 */}
+                    <div className="aspect-square bg-gray-100 rounded-lg mb-3 overflow-hidden group-hover:opacity-90 transition-opacity relative">
+                      {product.imageUrl ? (
+                        <Image src={product.imageUrl} alt={product.name} fill className="object-cover" />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center text-gray-300 text-sm">이미지 없음</div>
+                      )}
                     </div>
                     {/* 상품 정보 */}
                     <div className="space-y-1">

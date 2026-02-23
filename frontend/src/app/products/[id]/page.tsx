@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { toast } from "sonner";
 import { ArrowLeft, ShoppingCart, Zap, Star } from "lucide-react";
+import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
@@ -138,8 +139,14 @@ export default function ProductDetailPage() {
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
           {/* 좌측: 이미지 */}
-          <div className="bg-gray-100 rounded-xl aspect-square flex items-center justify-center text-gray-400 text-sm">
-            상품 이미지
+          <div className="bg-gray-100 rounded-xl aspect-square overflow-hidden relative">
+            {product.imageUrl ? (
+              <Image src={product.imageUrl} alt={product.name} fill className="object-cover" />
+            ) : (
+              <div className="w-full h-full flex items-center justify-center text-gray-400 text-sm">
+                상품 이미지
+              </div>
+            )}
           </div>
 
           {/* 우측: 상품 정보 */}
