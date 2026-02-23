@@ -117,6 +117,9 @@ jobs:
             DOCKERHUB_USERNAME=${{ secrets.DOCKERHUB_USERNAME }}
             TOSS_SECRET_KEY=${{ secrets.TOSS_SECRET_KEY }}
             TOSS_BASE_URL=${{ secrets.TOSS_BASE_URL }}
+            NCP_ACCESS_KEY=${{ secrets.NCP_ACCESS_KEY }}
+            NCP_SECRET_KEY=${{ secrets.NCP_SECRET_KEY }}
+            NCP_DEFAULT_IMAGE_URL=${{ secrets.NCP_DEFAULT_IMAGE_URL }}
             EOF
 
             # 기존 컨테이너 중지 및 삭제
