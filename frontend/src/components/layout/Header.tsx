@@ -2,23 +2,34 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { ShoppingCart, User, LogOut, Package, LogIn } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { authApi } from "@/lib/auth-api";
+import { cartApi } from "@/lib/cart-api";
 
 export default function Header() {
   const router = useRouter();
+  const pathname = usePathname();
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [cartCount, setCartCount] = useState(0);
 
   useEffect(() => {
-    authApi.checkAuth().then(setIsLoggedIn);
-  }, []);
+    authApi.checkAuth().then((loggedIn) => {
+      setIsLoggedIn(loggedIn);
+      if (loggedIn) {
+        cartApi.getCart().then((res) => setCartCount(res.data.totalQuantity)).catch(() => {});
+      } else {
+        setCartCount(0);
+      }
+    });
+  }, [pathname]);
 
   const handleLogout = async () => {
     await authApi.logout();
     setIsLoggedIn(false);
+    setCartCount(0);
     router.push("/");
   };
 
@@ -50,7 +61,14 @@ export default function Header() {
           </Link>
           <Link href="/cart">
             <Button variant="ghost" size="sm" className="gap-2">
-              <ShoppingCart size={18} />
+              <div className="relative">
+                <ShoppingCart size={18} />
+                {isLoggedIn && cartCount > 0 && (
+                  <span className="absolute -top-2 -right-2 bg-red-500 text-white text-[10px] font-bold rounded-full h-4 w-4 flex items-center justify-center leading-none">
+                    {cartCount > 99 ? "99+" : cartCount}
+                  </span>
+                )}
+              </div>
               장바구니
             </Button>
           </Link>
