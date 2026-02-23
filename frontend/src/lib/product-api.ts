@@ -1,5 +1,5 @@
 import { api } from "./api";
-import { ApiResponse, PageResponse, ProductDetail, ProductSummary } from "./types";
+import { ApiResponse, PageResponse, ProductDetail, ProductSummary, ReviewResponse } from "./types";
 
 export interface ProductSearchParams {
   productName?: string;
@@ -26,4 +26,15 @@ export const productApi = {
 
   getProduct: (productId: number) =>
     api.get<ApiResponse<ProductDetail>>(`/api/products/${productId}`),
+
+  getReviews: (productId: number, page = 0) =>
+    api.get<ApiResponse<PageResponse<ReviewResponse>>>(
+      `/api/products/${productId}/reviews?page=${page}&size=10`
+    ),
+
+  createReview: (productId: number, rating: number, content: string) =>
+    api.post<ApiResponse<ReviewResponse>>(`/api/products/${productId}/reviews`, {
+      rating,
+      content,
+    }),
 };

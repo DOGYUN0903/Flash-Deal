@@ -2,22 +2,15 @@
 
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { Search } from "lucide-react";
+import { Search, Star } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import Link from "next/link";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import Link from "next/link";
 import Header from "@/components/layout/Header";
 import CategoryTab from "@/components/layout/CategoryTab";
 import { productApi } from "@/lib/product-api";
 import { ProductSummary } from "@/lib/types";
-
-const STATUS_LABEL: Record<string, { label: string; variant: "default" | "secondary" | "destructive" }> = {
-  ON_SALE:   { label: "판매중",     variant: "default" },
-  PREPARING: { label: "판매 준비중", variant: "secondary" },
-  SOLD_OUT:  { label: "품절",       variant: "destructive" },
-};
 
 export default function ProductsPage() {
   const [products, setProducts] = useState<ProductSummary[]>([]);
@@ -25,7 +18,6 @@ export default function ProductsPage() {
   const [totalPages, setTotalPages] = useState(0);
   const [page, setPage] = useState(0);
 
-  // 검색 조건
   const [productName, setProductName] = useState("");
   const [minPrice, setMinPrice] = useState("");
   const [maxPrice, setMaxPrice] = useState("");
@@ -34,7 +26,7 @@ export default function ProductsPage() {
   useEffect(() => {
     setLoading(true);
     productApi
-      .getProducts({ ...searchParams, page, size: 10 })
+      .getProducts({ ...searchParams, page, size: 15 })
       .then((res) => {
         setProducts(res.data.data);
         setTotalPages(res.data.totalPages);
@@ -57,9 +49,7 @@ export default function ProductsPage() {
     <div>
       <Header />
       <CategoryTab />
-      <div className="max-w-6xl mx-auto px-4 py-8">
-        <h2 className="text-2xl font-bold mb-6">상품 목록</h2>
-
+      <div className="max-w-7xl mx-auto px-4 py-8">
         {/* 검색 */}
         <form onSubmit={handleSearch} className="flex flex-wrap gap-3 mb-8">
           <Input
@@ -95,32 +85,46 @@ export default function ProductsPage() {
           <div className="text-center py-20 text-gray-400">상품이 없습니다.</div>
         ) : (
           <>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {products.map((product) => {
-                const status = STATUS_LABEL[product.status] ?? { label: product.status, variant: "secondary" as const };
-                return (
-                  <Link href={`/products/${product.productId}`} key={product.productId}>
-                    <Card className="hover:shadow-md transition-shadow cursor-pointer h-full">
-                      <CardHeader>
-                        <div className="flex items-start justify-between gap-2">
-                          <CardTitle className="text-base">{product.name}</CardTitle>
-                          <Badge variant={status.variant}>{status.label}</Badge>
-                        </div>
-                      </CardHeader>
-                      <CardContent>
-                        <p className="text-xl font-bold text-blue-600">
-                          {product.price.toLocaleString("ko-KR")}원
-                        </p>
-                      </CardContent>
-                    </Card>
-                  </Link>
-                );
-              })}
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+              {products.map((product) => (
+                <Link href={`/products/${product.productId}`} key={product.productId}>
+                  <div className="group cursor-pointer">
+                    {/* 이미지 자리 */}
+                    <div className="aspect-square bg-gray-100 rounded-lg mb-3 overflow-hidden group-hover:opacity-90 transition-opacity flex items-center justify-center text-gray-300 text-sm">
+                      이미지 없음
+                    </div>
+                    {/* 상품 정보 */}
+                    <div className="space-y-1">
+                      {product.status === "SOLD_OUT" && (
+                        <Badge variant="destructive" className="text-xs">품절</Badge>
+                      )}
+                      <p className="text-sm font-medium text-gray-800 leading-snug line-clamp-2">
+                        {product.name}
+                      </p>
+                      <p className="text-base font-bold">
+                        {product.price.toLocaleString("ko-KR")}원
+                      </p>
+                      {/* 별점 + 리뷰수 */}
+                      <div className="flex items-center gap-1">
+                        <Star size={12} className="fill-yellow-400 text-yellow-400" />
+                        <span className="text-xs text-gray-600">
+                          {product.averageRating != null
+                            ? product.averageRating.toFixed(1)
+                            : "0.0"}
+                        </span>
+                        <span className="text-xs text-gray-400">
+                          ({product.reviewCount.toLocaleString()})
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </Link>
+              ))}
             </div>
 
             {/* 페이지네이션 */}
             {totalPages > 1 && (
-              <div className="flex justify-center gap-2 mt-8">
+              <div className="flex justify-center gap-2 mt-10">
                 <Button
                   variant="outline"
                   size="sm"

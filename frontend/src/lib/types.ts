@@ -52,6 +52,16 @@ export interface ProductSummary {
   name: string;
   price: number;
   status: string;
+  reviewCount: number;
+  averageRating: number | null;
+}
+
+export interface ReviewResponse {
+  reviewId: number;
+  memberName: string;
+  rating: number;
+  content: string;
+  createdAt: string;
 }
 
 export interface ProductDetail {

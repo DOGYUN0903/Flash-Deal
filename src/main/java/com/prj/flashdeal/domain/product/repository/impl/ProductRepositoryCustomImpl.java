@@ -1,6 +1,7 @@
 package com.prj.flashdeal.domain.product.repository.impl;
 
 import static com.prj.flashdeal.domain.product.entity.QProduct.*;
+import static com.prj.flashdeal.domain.review.entity.QReview.*;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
@@ -19,6 +20,7 @@ import com.prj.flashdeal.domain.product.entity.ProductStatus;
 import com.prj.flashdeal.domain.product.repository.ProductRepositoryCustom;
 import com.querydsl.core.types.Projections;
 import com.querydsl.core.types.dsl.BooleanExpression;
+import com.querydsl.jpa.JPAExpressions;
 import com.querydsl.jpa.impl.JPAQuery;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 
@@ -39,7 +41,13 @@ public class ProductRepositoryCustomImpl implements ProductRepositoryCustom {
                 product.name,
                 product.price,
                 product.stockQuantity,
-                product.status))
+                product.status,
+                JPAExpressions.select(review.id.count())
+                    .from(review)
+                    .where(review.product.id.eq(product.id), review.isDeleted.isFalse()),
+                JPAExpressions.select(review.rating.avg())
+                    .from(review)
+                    .where(review.product.id.eq(product.id), review.isDeleted.isFalse())))
             .from(product)
             .where(
                 productNameContains(cond.getProductName()),
@@ -80,7 +88,13 @@ public class ProductRepositoryCustomImpl implements ProductRepositoryCustom {
                 product.name,
                 product.price,
                 product.stockQuantity,
-                product.status))
+                product.status,
+                JPAExpressions.select(review.id.count())
+                    .from(review)
+                    .where(review.product.id.eq(product.id), review.isDeleted.isFalse()),
+                JPAExpressions.select(review.rating.avg())
+                    .from(review)
+                    .where(review.product.id.eq(product.id), review.isDeleted.isFalse())))
             .from(product)
             .where(
                 product.isDeleted.isFalse(),
@@ -137,9 +151,8 @@ public class ProductRepositoryCustomImpl implements ProductRepositoryCustom {
 
     private BooleanExpression isDeletedEq(Boolean isDeleted) {
         if (isDeleted == null) {
-            return null; // isDeleted 파라미터가 없으면, 전체 조회
+            return null;
         }
         return isDeleted ? product.isDeleted.isTrue() : product.isDeleted.isFalse();
     }
 }
-

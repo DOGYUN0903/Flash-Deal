@@ -7,5 +7,7 @@ public record ProductSummaryResponse(
     String name,
     Integer price,
     Integer stockQuantity,
-    ProductStatus status
+    ProductStatus status,
+    Long reviewCount,
+    Double averageRating
 ) {}

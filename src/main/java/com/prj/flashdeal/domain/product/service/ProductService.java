@@ -94,6 +94,11 @@ public class ProductService {
 
     // ---------------- 다른 도메인과 통신을 위한 메서드 ----------------
     @Transactional(readOnly = true)
+    public Product getProductEntity(Long productId) {
+        return getProduct(productId);
+    }
+
+    @Transactional(readOnly = true)
     public Product findCartableProduct(Long productId) {
         Product product = getProduct(productId);
 
