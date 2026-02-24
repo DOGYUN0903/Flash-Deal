@@ -92,7 +92,7 @@ jobs:
           host: ${{ secrets.NCP_SERVER_IP }}
           username: root
           key: ${{ secrets.NCP_SSH_KEY }}
-          source: "docker-compose.prod.yml,prometheus/prometheus.yml,grafana/provisioning"
+          source: "docker-compose.prod.yml,prometheus/prometheus.yml"
           target: "/root/flashdeal-app"
 
       # ==================================
