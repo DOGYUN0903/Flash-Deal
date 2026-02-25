@@ -56,13 +56,9 @@ public class Order extends BaseTimeEntity {
     @Column(nullable = false)
     private Integer totalPrice;
 
-    @Column(name = "deal_id")
-    private Long dealId;
-
     @Builder
-    private Order(Member member, Long dealId) {
+    private Order(Member member) {
         this.member = member;
-        this.dealId = dealId;
         this.status = OrderStatus.PENDING;
         this.totalPrice = 0;
     }

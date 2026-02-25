@@ -5,7 +5,6 @@ import { usePathname } from "next/navigation";
 
 const TABS = [
   { label: "상품", href: "/products" },
-  { label: "⚡ 딜", href: "/deals" },
 ];
 
 export default function CategoryTab() {

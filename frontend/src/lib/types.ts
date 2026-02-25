@@ -75,14 +75,6 @@ export interface ProductDetail {
   imageUrl: string | null;
 }
 
-export interface Deal {
-  id: number;
-  productName: string;
-  dealPrice: number;
-  stock: number;
-  openTime: string;
-  endTime: string;
-}
 
 export interface CartItem {
   cartItemId: number;
@@ -100,16 +92,6 @@ export interface CartResponse {
   totalQuantity: number;
 }
 
-export interface DealDetail {
-  id: number;
-  productName: string;
-  productDescription: string;
-  originalPrice: number;
-  dealPrice: number;
-  stock: number;
-  openTime: string;
-  endTime: string;
-}
 
 export interface OrderItem {
   orderItemId: number;
@@ -137,12 +119,3 @@ export interface OrderDetail {
   createdAt: string;
 }
 
-export interface DealPurchaseResponse {
-  orderId: number;
-  dealId: number;
-  productName: string;
-  dealPrice: number;
-  remainingStock: number;
-  orderStatus: string;
-  createdAt: string;
-}
