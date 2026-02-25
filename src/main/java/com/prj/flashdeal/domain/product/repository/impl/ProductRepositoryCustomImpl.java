@@ -99,7 +99,9 @@ public class ProductRepositoryCustomImpl implements ProductRepositoryCustom {
             .leftJoin(review).on(review.product.id.eq(product.id), review.isDeleted.isFalse())
             .where(
                 product.isDeleted.isFalse(),
-                product.status.in(ProductStatus.ON_SALE, ProductStatus.SOLD_OUT),
+                cond.isExcludeSoldOut()
+                    ? product.status.eq(ProductStatus.ON_SALE)
+                    : product.status.in(ProductStatus.ON_SALE, ProductStatus.SOLD_OUT),
                 productNameContains(cond.getProductName()),
                 priceGoe(cond.getMinPrice()),
                 priceLoe(cond.getMaxPrice()),
@@ -116,7 +118,9 @@ public class ProductRepositoryCustomImpl implements ProductRepositoryCustom {
             .from(product)
             .where(
                 product.isDeleted.isFalse(),
-                product.status.in(ProductStatus.ON_SALE, ProductStatus.SOLD_OUT),
+                cond.isExcludeSoldOut()
+                    ? product.status.eq(ProductStatus.ON_SALE)
+                    : product.status.in(ProductStatus.ON_SALE, ProductStatus.SOLD_OUT),
                 productNameContains(cond.getProductName()),
                 priceGoe(cond.getMinPrice()),
                 priceLoe(cond.getMaxPrice()),

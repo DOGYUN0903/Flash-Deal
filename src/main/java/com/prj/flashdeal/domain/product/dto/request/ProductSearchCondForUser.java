@@ -15,4 +15,6 @@ public class ProductSearchCondForUser {
     private Integer maxPrice;
 
     private ProductCategory category;
+
+    private boolean excludeSoldOut;
 }
