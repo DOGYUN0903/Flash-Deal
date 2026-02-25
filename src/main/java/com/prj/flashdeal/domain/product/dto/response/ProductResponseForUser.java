@@ -1,6 +1,7 @@
 package com.prj.flashdeal.domain.product.dto.response;
 
 import com.prj.flashdeal.domain.product.entity.Product;
+import com.prj.flashdeal.domain.product.entity.ProductCategory;
 import com.prj.flashdeal.domain.product.entity.ProductStatus;
 
 public record ProductResponseForUser(
@@ -10,7 +11,8 @@ public record ProductResponseForUser(
     Integer price,
     Integer stockQuantity,
     ProductStatus status,
-    String imageUrl
+    String imageUrl,
+    ProductCategory category
 ) {
     public static ProductResponseForUser from(Product product) {
         return new ProductResponseForUser(
@@ -20,7 +22,8 @@ public record ProductResponseForUser(
             product.getPrice(),
             product.getStockQuantity(),
             product.getStatus(),
-            product.getImageUrl()
+            product.getImageUrl(),
+            product.getCategory()
         );
     }
 }

@@ -1,5 +1,7 @@
 package com.prj.flashdeal.domain.product.dto.request;
 
+import com.prj.flashdeal.domain.product.entity.ProductCategory;
+
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
@@ -23,4 +25,6 @@ public class ProductCreateRequest {
     @NotNull(message = "재고는 필수 입력 값입니다.")
     @jakarta.validation.constraints.Min(value = 0, message = "재고는 0 이상이어야 합니다.")
     private Integer stock;
+
+    private ProductCategory category;
 }

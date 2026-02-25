@@ -5,6 +5,7 @@ export interface ProductSearchParams {
   productName?: string;
   minPrice?: number;
   maxPrice?: number;
+  category?: string;
   page?: number;
   size?: number;
 }
@@ -15,6 +16,7 @@ export const productApi = {
     if (params.productName) query.set("productName", params.productName);
     if (params.minPrice !== undefined) query.set("minPrice", String(params.minPrice));
     if (params.maxPrice !== undefined) query.set("maxPrice", String(params.maxPrice));
+    if (params.category) query.set("category", params.category);
     if (params.page !== undefined) query.set("page", String(params.page));
     if (params.size !== undefined) query.set("size", String(params.size));
 

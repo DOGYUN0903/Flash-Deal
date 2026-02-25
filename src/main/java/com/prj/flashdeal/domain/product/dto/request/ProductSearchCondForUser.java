@@ -1,5 +1,7 @@
 package com.prj.flashdeal.domain.product.dto.request;
 
+import com.prj.flashdeal.domain.product.entity.ProductCategory;
+
 import lombok.Getter;
 import lombok.Setter;
 
@@ -11,4 +13,6 @@ public class ProductSearchCondForUser {
 
     private Integer minPrice;
     private Integer maxPrice;
+
+    private ProductCategory category;
 }

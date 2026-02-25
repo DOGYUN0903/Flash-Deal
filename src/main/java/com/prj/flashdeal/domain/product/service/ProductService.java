@@ -38,6 +38,7 @@ public class ProductService {
             .description(request.getDescription())
             .price(request.getPrice())
             .stock(request.getStock())
+            .category(request.getCategory())
             .build();
 
         product.updateImageUrl(imageUrl != null ? imageUrl : defaultImageUrl);

@@ -4,6 +4,7 @@ import java.time.LocalDate;
 
 import org.springframework.format.annotation.DateTimeFormat;
 
+import com.prj.flashdeal.domain.product.entity.ProductCategory;
 import com.prj.flashdeal.domain.product.entity.ProductStatus;
 
 import lombok.Getter;
@@ -26,4 +27,6 @@ public class ProductSearchCondForAdmin {
     private ProductStatus status;
 
     private Boolean isDeleted;
+
+    private ProductCategory category;
 }

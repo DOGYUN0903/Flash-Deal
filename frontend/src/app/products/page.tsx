@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { Search, Star } from "lucide-react";
+import { Star, SlidersHorizontal, X } from "lucide-react";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -19,65 +19,158 @@ export default function ProductsPage() {
   const [totalPages, setTotalPages] = useState(0);
   const [page, setPage] = useState(0);
 
-  const [productName, setProductName] = useState("");
-  const [minPrice, setMinPrice] = useState("");
-  const [maxPrice, setMaxPrice] = useState("");
-  const [searchParams, setSearchParams] = useState({});
+  const [category, setCategory] = useState<string | null>(null);
+  const [filterOpen, setFilterOpen] = useState(false);
+
+  const [draftName, setDraftName] = useState("");
+  const [draftMinPrice, setDraftMinPrice] = useState("");
+  const [draftMaxPrice, setDraftMaxPrice] = useState("");
+
+  const [appliedName, setAppliedName] = useState("");
+  const [appliedMinPrice, setAppliedMinPrice] = useState("");
+  const [appliedMaxPrice, setAppliedMaxPrice] = useState("");
+
+  const hasActiveFilter = appliedName || appliedMinPrice || appliedMaxPrice;
 
   useEffect(() => {
     setLoading(true);
     productApi
-      .getProducts({ ...searchParams, page, size: 15 })
+      .getProducts({
+        productName: appliedName || undefined,
+        minPrice: appliedMinPrice ? Number(appliedMinPrice) : undefined,
+        maxPrice: appliedMaxPrice ? Number(appliedMaxPrice) : undefined,
+        category: category ?? undefined,
+        page,
+        size: 15,
+      })
       .then((res) => {
         setProducts(res.data.data);
         setTotalPages(res.data.totalPages);
       })
       .catch(() => toast.error("상품 목록을 불러오지 못했습니다."))
       .finally(() => setLoading(false));
-  }, [searchParams, page]);
+  }, [appliedName, appliedMinPrice, appliedMaxPrice, category, page]);
 
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleCategoryChange = (cat: string | null) => {
+    setCategory(cat);
     setPage(0);
-    setSearchParams({
-      productName: productName || undefined,
-      minPrice: minPrice ? Number(minPrice) : undefined,
-      maxPrice: maxPrice ? Number(maxPrice) : undefined,
-    });
+  };
+
+  const handleApplyFilter = () => {
+    setAppliedName(draftName);
+    setAppliedMinPrice(draftMinPrice);
+    setAppliedMaxPrice(draftMaxPrice);
+    setPage(0);
+    setFilterOpen(false);
+  };
+
+  const handleResetFilter = () => {
+    setDraftName("");
+    setDraftMinPrice("");
+    setDraftMaxPrice("");
+    setAppliedName("");
+    setAppliedMinPrice("");
+    setAppliedMaxPrice("");
+    setPage(0);
+    setFilterOpen(false);
   };
 
   return (
     <div>
       <Header />
-      <CategoryTab />
-      <div className="max-w-7xl mx-auto px-4 py-8">
-        {/* 검색 */}
-        <form onSubmit={handleSearch} className="flex flex-wrap gap-3 mb-8">
-          <Input
-            placeholder="상품명 검색"
-            value={productName}
-            onChange={(e) => setProductName(e.target.value)}
-            className="w-48"
-          />
-          <Input
-            type="number"
-            placeholder="최소 금액"
-            value={minPrice}
-            onChange={(e) => setMinPrice(e.target.value)}
-            className="w-36"
-          />
-          <Input
-            type="number"
-            placeholder="최대 금액"
-            value={maxPrice}
-            onChange={(e) => setMaxPrice(e.target.value)}
-            className="w-36"
-          />
-          <Button type="submit" className="gap-2">
-            <Search size={16} />
-            검색
-          </Button>
-        </form>
+      <CategoryTab activeCategory={category} onCategoryChange={handleCategoryChange} />
+
+      <div className="max-w-7xl mx-auto px-4 py-6">
+        {/* 필터 바 */}
+        <div className="flex items-center justify-between mb-5">
+          <p className="text-sm text-gray-500">
+            {category
+              ? `카테고리: ${
+                  {
+                    ELECTRONICS: "전자기기",
+                    FASHION: "패션",
+                    FOOD: "식품",
+                    SPORTS: "스포츠",
+                    BEAUTY: "뷰티",
+                    FURNITURE: "가구",
+                    BOOKS: "도서",
+                  }[category] ?? category
+                }`
+              : "전체 상품"}
+          </p>
+
+          <div className="flex items-center gap-2">
+            {hasActiveFilter && (
+              <button
+                onClick={handleResetFilter}
+                className="flex items-center gap-1 text-xs text-gray-500 hover:text-black transition-colors"
+              >
+                <X size={13} />
+                필터 초기화
+              </button>
+            )}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                setDraftName(appliedName);
+                setDraftMinPrice(appliedMinPrice);
+                setDraftMaxPrice(appliedMaxPrice);
+                setFilterOpen((v) => !v);
+              }}
+              className="gap-2"
+            >
+              <SlidersHorizontal size={15} />
+              필터
+              {hasActiveFilter && (
+                <span className="ml-1 w-1.5 h-1.5 rounded-full bg-black inline-block" />
+              )}
+            </Button>
+          </div>
+        </div>
+
+        {/* 필터 패널 */}
+        {filterOpen && (
+          <div className="border rounded-xl p-5 mb-6 bg-white shadow-sm">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-medium text-gray-600">상품명</label>
+                <Input
+                  placeholder="상품명 검색"
+                  value={draftName}
+                  onChange={(e) => setDraftName(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && handleApplyFilter()}
+                />
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-medium text-gray-600">최소 금액</label>
+                <Input
+                  type="number"
+                  placeholder="0"
+                  value={draftMinPrice}
+                  onChange={(e) => setDraftMinPrice(e.target.value)}
+                />
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-medium text-gray-600">최대 금액</label>
+                <Input
+                  type="number"
+                  placeholder="제한 없음"
+                  value={draftMaxPrice}
+                  onChange={(e) => setDraftMaxPrice(e.target.value)}
+                />
+              </div>
+            </div>
+            <div className="flex justify-end gap-2 mt-4">
+              <Button variant="outline" size="sm" onClick={handleResetFilter}>
+                초기화
+              </Button>
+              <Button size="sm" onClick={handleApplyFilter}>
+                적용
+              </Button>
+            </div>
+          </div>
+        )}
 
         {/* 상품 목록 */}
         {loading ? (
@@ -90,15 +183,15 @@ export default function ProductsPage() {
               {products.map((product) => (
                 <Link href={`/products/${product.productId}`} key={product.productId}>
                   <div className="group cursor-pointer">
-                    {/* 이미지 */}
                     <div className="aspect-square bg-gray-100 rounded-lg mb-3 overflow-hidden group-hover:opacity-90 transition-opacity relative">
                       {product.imageUrl ? (
                         <Image src={product.imageUrl} alt={product.name} fill className="object-cover" />
                       ) : (
-                        <div className="w-full h-full flex items-center justify-center text-gray-300 text-sm">이미지 없음</div>
+                        <div className="w-full h-full flex items-center justify-center text-gray-300 text-sm">
+                          이미지 없음
+                        </div>
                       )}
                     </div>
-                    {/* 상품 정보 */}
                     <div className="space-y-1">
                       {product.status === "SOLD_OUT" && (
                         <Badge variant="destructive" className="text-xs">품절</Badge>
@@ -109,7 +202,6 @@ export default function ProductsPage() {
                       <p className="text-base font-bold">
                         {product.price.toLocaleString("ko-KR")}원
                       </p>
-                      {/* 별점 + 리뷰수 */}
                       <div className="flex items-center gap-1">
                         <Star size={12} className="fill-yellow-400 text-yellow-400" />
                         <span className="text-xs text-gray-600">
@@ -127,7 +219,6 @@ export default function ProductsPage() {
               ))}
             </div>
 
-            {/* 페이지네이션 */}
             {totalPages > 1 && (
               <div className="flex justify-center gap-2 mt-10">
                 <Button

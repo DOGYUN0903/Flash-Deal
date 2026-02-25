@@ -53,6 +53,7 @@ export interface ProductSummary {
   price: number;
   status: string;
   imageUrl: string | null;
+  category: string | null;
   reviewCount: number;
   averageRating: number | null;
 }
@@ -73,6 +74,7 @@ export interface ProductDetail {
   stockQuantity: number;
   status: string;
   imageUrl: string | null;
+  category: string | null;
 }
 
 

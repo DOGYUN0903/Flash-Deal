@@ -47,6 +47,10 @@ public class Product extends BaseEntity {
     @Column
     private String imageUrl;
 
+    @Enumerated(EnumType.STRING)
+    @Column
+    private ProductCategory category;
+
     @Override
     public void delete() {
         if (this.stockQuantity > 0) {
@@ -56,12 +60,13 @@ public class Product extends BaseEntity {
     }
 
     @Builder
-    private Product(String name, String description, Integer price, Integer stock) {
+    private Product(String name, String description, Integer price, Integer stock, ProductCategory category) {
         this.name = name;
         this.description = description;
         this.price = price;
         this.stockQuantity = stock != null ? stock : 0;
         this.status = (this.stockQuantity > 0) ? ProductStatus.ON_SALE : ProductStatus.PREPARING;
+        this.category = category != null ? category : ProductCategory.OTHER;
     }
 
     public void addStock(Integer quantity) {

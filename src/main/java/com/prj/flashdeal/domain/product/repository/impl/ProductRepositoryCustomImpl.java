@@ -16,11 +16,11 @@ import org.springframework.util.StringUtils;
 import com.prj.flashdeal.domain.product.dto.request.ProductSearchCondForAdmin;
 import com.prj.flashdeal.domain.product.dto.request.ProductSearchCondForUser;
 import com.prj.flashdeal.domain.product.dto.response.ProductSummaryResponse;
+import com.prj.flashdeal.domain.product.entity.ProductCategory;
 import com.prj.flashdeal.domain.product.entity.ProductStatus;
 import com.prj.flashdeal.domain.product.repository.ProductRepositoryCustom;
 import com.querydsl.core.types.Projections;
 import com.querydsl.core.types.dsl.BooleanExpression;
-import com.querydsl.jpa.JPAExpressions;
 import com.querydsl.jpa.impl.JPAQuery;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 
@@ -35,7 +35,7 @@ public class ProductRepositoryCustomImpl implements ProductRepositoryCustom {
     @Override
     public Page<ProductSummaryResponse> searchProductsForAdmin(ProductSearchCondForAdmin cond, Pageable pageable) {
 
-        List<ProductSummaryResponse> productSummaryResponseList = queryFactory
+        List<ProductSummaryResponse> content = queryFactory
             .select(Projections.constructor(ProductSummaryResponse.class,
                 product.id,
                 product.name,
@@ -43,13 +43,11 @@ public class ProductRepositoryCustomImpl implements ProductRepositoryCustom {
                 product.stockQuantity,
                 product.status,
                 product.imageUrl,
-                JPAExpressions.select(review.id.count())
-                    .from(review)
-                    .where(review.product.id.eq(product.id), review.isDeleted.isFalse()),
-                JPAExpressions.select(review.rating.avg())
-                    .from(review)
-                    .where(review.product.id.eq(product.id), review.isDeleted.isFalse())))
+                product.category,
+                review.id.count(),
+                review.rating.avg()))
             .from(product)
+            .leftJoin(review).on(review.product.id.eq(product.id), review.isDeleted.isFalse())
             .where(
                 productNameContains(cond.getProductName()),
                 priceGoe(cond.getMinPrice()),
@@ -57,8 +55,10 @@ public class ProductRepositoryCustomImpl implements ProductRepositoryCustom {
                 registeredAtGoe(cond.getStartDate()),
                 registeredAtLoe(cond.getEndDate()),
                 statusEq(cond.getStatus()),
-                isDeletedEq(cond.getIsDeleted())
+                isDeletedEq(cond.getIsDeleted()),
+                categoryEq(cond.getCategory())
             )
+            .groupBy(product.id)
             .orderBy(product.createdAt.desc())
             .offset(pageable.getOffset())
             .limit(pageable.getPageSize())
@@ -74,16 +74,17 @@ public class ProductRepositoryCustomImpl implements ProductRepositoryCustom {
                 registeredAtGoe(cond.getStartDate()),
                 registeredAtLoe(cond.getEndDate()),
                 statusEq(cond.getStatus()),
-                isDeletedEq(cond.getIsDeleted())
+                isDeletedEq(cond.getIsDeleted()),
+                categoryEq(cond.getCategory())
             );
 
-        return PageableExecutionUtils.getPage(productSummaryResponseList, pageable, countQuery::fetchOne);
+        return PageableExecutionUtils.getPage(content, pageable, countQuery::fetchOne);
     }
 
     @Override
     public Page<ProductSummaryResponse> searchProductsForUser(ProductSearchCondForUser cond, Pageable pageable) {
 
-        List<ProductSummaryResponse> productSummaryResponseList = queryFactory
+        List<ProductSummaryResponse> content = queryFactory
             .select(Projections.constructor(ProductSummaryResponse.class,
                 product.id,
                 product.name,
@@ -91,20 +92,20 @@ public class ProductRepositoryCustomImpl implements ProductRepositoryCustom {
                 product.stockQuantity,
                 product.status,
                 product.imageUrl,
-                JPAExpressions.select(review.id.count())
-                    .from(review)
-                    .where(review.product.id.eq(product.id), review.isDeleted.isFalse()),
-                JPAExpressions.select(review.rating.avg())
-                    .from(review)
-                    .where(review.product.id.eq(product.id), review.isDeleted.isFalse())))
+                product.category,
+                review.id.count(),
+                review.rating.avg()))
             .from(product)
+            .leftJoin(review).on(review.product.id.eq(product.id), review.isDeleted.isFalse())
             .where(
                 product.isDeleted.isFalse(),
                 product.status.in(ProductStatus.ON_SALE, ProductStatus.SOLD_OUT),
                 productNameContains(cond.getProductName()),
                 priceGoe(cond.getMinPrice()),
-                priceLoe(cond.getMaxPrice())
+                priceLoe(cond.getMaxPrice()),
+                categoryEq(cond.getCategory())
             )
+            .groupBy(product.id)
             .orderBy(product.createdAt.desc())
             .offset(pageable.getOffset())
             .limit(pageable.getPageSize())
@@ -118,17 +119,15 @@ public class ProductRepositoryCustomImpl implements ProductRepositoryCustom {
                 product.status.in(ProductStatus.ON_SALE, ProductStatus.SOLD_OUT),
                 productNameContains(cond.getProductName()),
                 priceGoe(cond.getMinPrice()),
-                priceLoe(cond.getMaxPrice())
+                priceLoe(cond.getMaxPrice()),
+                categoryEq(cond.getCategory())
             );
 
-        return PageableExecutionUtils.getPage(productSummaryResponseList, pageable, countQuery::fetchOne);
+        return PageableExecutionUtils.getPage(content, pageable, countQuery::fetchOne);
     }
 
     private BooleanExpression productNameContains(String productName) {
-        if (!StringUtils.hasText(productName)) {
-            return null;
-        }
-        return product.name.containsIgnoreCase(productName);
+        return StringUtils.hasText(productName) ? product.name.containsIgnoreCase(productName) : null;
     }
 
     private BooleanExpression priceGoe(Integer minPrice) {
@@ -152,9 +151,11 @@ public class ProductRepositoryCustomImpl implements ProductRepositoryCustom {
     }
 
     private BooleanExpression isDeletedEq(Boolean isDeleted) {
-        if (isDeleted == null) {
-            return null;
-        }
+        if (isDeleted == null) return null;
         return isDeleted ? product.isDeleted.isTrue() : product.isDeleted.isFalse();
+    }
+
+    private BooleanExpression categoryEq(ProductCategory category) {
+        return category != null ? product.category.eq(category) : null;
     }
 }
