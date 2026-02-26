@@ -92,7 +92,7 @@ dev                  ← 통합 브랜치 (현재)
 
 ### MVP ERD
 
-![Flash Deal MVP ERD](./flash-deal_MVP_ERD.png)
+![Flash Deal MVP ERD](images/flash-deal_MVP_ERD.png)
 
 ---
 

@@ -12,11 +12,8 @@ import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.multipart.MultipartFile;
 
-import com.prj.flashdeal.domain.file.service.FileService;
 import com.prj.flashdeal.domain.product.dto.request.ProductCreateRequest;
 import com.prj.flashdeal.domain.product.dto.request.ProductSearchCondForAdmin;
 import com.prj.flashdeal.domain.product.dto.request.ProductUpdateRequest;
@@ -35,18 +32,15 @@ import lombok.RequiredArgsConstructor;
 public class AdminProductController {
 
     private final ProductService productService;
-    private final FileService fileService;
 
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<ApiResponse<ProductResponse>> createProduct(
-        @RequestPart("data") @Valid ProductCreateRequest request,
-        @RequestPart(value = "image", required = false) MultipartFile image
+        @ModelAttribute @Valid ProductCreateRequest request
     ) {
-        String imageUrl = (image != null && !image.isEmpty()) ? fileService.uploadFile(image) : null;
         return ApiResponse.success(
             HttpStatus.CREATED,
             "상품 등록이 완료되었습니다.",
-            productService.createProduct(request, imageUrl)
+            productService.createProduct(request)
         );
     }
 
@@ -76,14 +70,12 @@ public class AdminProductController {
     @PatchMapping(value = "/{productId}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<ApiResponse<ProductResponse>> updateProduct(
         @PathVariable Long productId,
-        @RequestPart("data") ProductUpdateRequest request,
-        @RequestPart(value = "image", required = false) MultipartFile image
+        @ModelAttribute ProductUpdateRequest request
     ) {
-        String imageUrl = (image != null && !image.isEmpty()) ? fileService.uploadFile(image) : null;
         return ApiResponse.success(
             HttpStatus.OK,
             "상품 수정이 완료되었습니다.",
-            productService.updateProduct(productId, request, imageUrl)
+            productService.updateProduct(productId, request)
         );
     }
 

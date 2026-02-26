@@ -60,13 +60,20 @@ public class Product extends BaseEntity {
     }
 
     @Builder
-    private Product(String name, String description, Integer price, Integer stock, ProductCategory category) {
+    private Product(String name, String description, Integer price, Integer stock, ProductCategory category, String imageUrl) {
         this.name = name;
         this.description = description;
         this.price = price;
         this.stockQuantity = stock != null ? stock : 0;
         this.status = (this.stockQuantity > 0) ? ProductStatus.ON_SALE : ProductStatus.PREPARING;
         this.category = category;
+        this.imageUrl = imageUrl;
+    }
+
+    public void validateVisibleToUser() {
+        if (this.status != ProductStatus.ON_SALE && this.status != ProductStatus.SOLD_OUT) {
+            throw new ProductException(ProductErrorCode.PRODUCT_NOT_FOUND);
+        }
     }
 
     public void addStock(Integer quantity) {
@@ -110,14 +117,14 @@ public class Product extends BaseEntity {
         this.imageUrl = imageUrl;
     }
 
-    public void updateInfo(String name, String description, Integer price) {
-        if (name != null){
+    public void updateInfo(String name, String description, Integer price, Integer stock, String imageUrl) {
+        if (name != null) {
             if (name.isBlank()) {
                 throw new ProductException(ProductErrorCode.BLANK_PRODUCT_NAME);
             }
             this.name = name;
         }
-        if (description != null){
+        if (description != null) {
             this.description = description;
         }
         if (price != null) {
@@ -125,6 +132,16 @@ public class Product extends BaseEntity {
                 throw new ProductException(ProductErrorCode.INVALID_PRICE);
             }
             this.price = price;
+        }
+        if (stock != null) {
+            if (stock < 0) {
+                throw new ProductException(ProductErrorCode.INVALID_STOCK_QUANTITY);
+            }
+            this.stockQuantity = stock;
+            this.status = (stock == 0) ? ProductStatus.SOLD_OUT : ProductStatus.ON_SALE;
+        }
+        if (imageUrl != null) {
+            this.imageUrl = imageUrl;
         }
     }
 }

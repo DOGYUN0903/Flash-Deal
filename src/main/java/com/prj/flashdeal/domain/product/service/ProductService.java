@@ -1,9 +1,12 @@
 package com.prj.flashdeal.domain.product.service;
 
+import com.prj.flashdeal.domain.file.service.FileService;
+import com.prj.flashdeal.domain.product.entity.ProductStatus;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
 import com.prj.flashdeal.domain.product.dto.request.ProductCreateRequest;
 import com.prj.flashdeal.domain.product.dto.request.ProductSearchCondForAdmin;
@@ -13,7 +16,6 @@ import com.prj.flashdeal.domain.product.dto.response.ProductResponse;
 import com.prj.flashdeal.domain.product.dto.response.ProductResponseForUser;
 import com.prj.flashdeal.domain.product.dto.response.ProductSummaryResponse;
 import com.prj.flashdeal.domain.product.entity.Product;
-import com.prj.flashdeal.domain.product.entity.ProductStatus;
 import com.prj.flashdeal.domain.product.exception.ProductErrorCode;
 import com.prj.flashdeal.domain.product.exception.ProductException;
 import com.prj.flashdeal.domain.product.repository.ProductRepository;
@@ -26,22 +28,24 @@ import lombok.RequiredArgsConstructor;
 public class ProductService {
 
     private final ProductRepository productRepository;
+    private final FileService fileService;
 
     @Value("${ncp.object-storage.default-image-url}")
     private String defaultImageUrl;
 
     // ---------------- Admin 전용 비즈니스 로직 ----------------
     @Transactional
-    public ProductResponse createProduct(ProductCreateRequest request, String imageUrl) {
+    public ProductResponse createProduct(ProductCreateRequest request) {
+        String imageUrl = uploadImageOrDefault(request.getImage());
+
         Product product = Product.builder()
             .name(request.getName())
             .description(request.getDescription())
             .price(request.getPrice())
             .stock(request.getStock())
             .category(request.getCategory())
+            .imageUrl(imageUrl)
             .build();
-
-        product.updateImageUrl(imageUrl != null ? imageUrl : defaultImageUrl);
 
         return ProductResponse.from(productRepository.save(product));
     }
@@ -59,22 +63,18 @@ public class ProductService {
     }
 
     @Transactional
-    public ProductResponse updateProduct(Long productId, ProductUpdateRequest request, String imageUrl) {
+    public ProductResponse updateProduct(Long productId, ProductUpdateRequest request) {
         Product product = getProduct(productId);
+        MultipartFile image = request.getImage();
+        String imageUrl = (image != null && !image.isEmpty()) ? fileService.uploadFile(image) : null;
 
         product.updateInfo(
             request.getName(),
             request.getDescription(),
-            request.getPrice()
+            request.getPrice(),
+            request.getStock(),
+            imageUrl
         );
-
-        if (request.getStock() != null) {
-            product.updateStock(request.getStock());
-        }
-
-        if (imageUrl != null) {
-            product.updateImageUrl(imageUrl);
-        }
 
         return ProductResponse.from(product);
     }
@@ -96,9 +96,7 @@ public class ProductService {
     public ProductResponseForUser getProductForUser(Long productId) {
         Product product = getProduct(productId);
 
-        if (product.getStatus() != ProductStatus.ON_SALE && product.getStatus() != ProductStatus.SOLD_OUT) {
-            throw new ProductException(ProductErrorCode.PRODUCT_NOT_FOUND);
-        }
+        product.validateVisibleToUser();
 
         return ProductResponseForUser.from(product);
     }
@@ -139,6 +137,10 @@ public class ProductService {
     }
 
     // ---------------- private 헬퍼 메서드 ----------------
+    private String uploadImageOrDefault(MultipartFile image) {
+        return (image != null && !image.isEmpty()) ? fileService.uploadFile(image) : defaultImageUrl;
+    }
+
     private Product getProduct(Long productId) {
         Product product = productRepository.findById(productId)
             .orElseThrow(() -> new ProductException(ProductErrorCode.PRODUCT_NOT_FOUND));
