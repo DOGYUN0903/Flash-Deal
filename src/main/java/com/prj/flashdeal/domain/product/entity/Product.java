@@ -48,7 +48,7 @@ public class Product extends BaseEntity {
     private String imageUrl;
 
     @Enumerated(EnumType.STRING)
-    @Column
+    @Column(nullable = false)
     private ProductCategory category;
 
     @Override
@@ -66,7 +66,7 @@ public class Product extends BaseEntity {
         this.price = price;
         this.stockQuantity = stock != null ? stock : 0;
         this.status = (this.stockQuantity > 0) ? ProductStatus.ON_SALE : ProductStatus.PREPARING;
-        this.category = category != null ? category : ProductCategory.OTHER;
+        this.category = category;
     }
 
     public void addStock(Integer quantity) {

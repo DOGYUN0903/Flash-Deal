@@ -7,6 +7,5 @@ public enum ProductCategory {
     SPORTS,       // 스포츠
     BEAUTY,       // 뷰티
     FURNITURE,    // 가구
-    BOOKS,        // 도서
-    OTHER         // 기타
+    BOOKS         // 도서
 }

@@ -26,5 +26,6 @@ public class ProductCreateRequest {
     @jakarta.validation.constraints.Min(value = 0, message = "재고는 0 이상이어야 합니다.")
     private Integer stock;
 
+    @NotNull(message = "카테고리는 필수 입력 값입니다.")
     private ProductCategory category;
 }
