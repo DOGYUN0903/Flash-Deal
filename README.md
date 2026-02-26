@@ -183,94 +183,10 @@ Resilience4j Circuit Breaker
 
 ## 4. ERD
 
-```mermaid
-erDiagram
-    Member ||--o{ Order : "places"
-    Member ||--o{ CartItem : "has"
-    Product ||--o{ Deal : "listed as"
-    Product ||--o{ OrderItem : "included in"
-    Product ||--o{ CartItem : "added to"
-    Order ||--|{ OrderItem : "contains"
-    Order ||--o| Payment : "paid by"
+### MVP ERD
 
-    Member {
-        Long member_id PK
-        String email UK
-        String password
-        String name
-        String phone_number
-        Enum role "USER, ADMIN"
-        Enum status "ACTIVE, DORMANT, WITHDRAWN, BANNED"
-        Boolean is_deleted
-    }
+![Flash Deal MVP ERD](./flash-deal_MVP_ERD.png)
 
-    Product {
-        Long product_id PK
-        String name
-        String description
-        Integer price
-        Integer stock_quantity
-        Enum status "PREPARING, ON_SALE, SOLD_OUT"
-        Boolean is_deleted
-    }
-
-    Deal {
-        Long deal_id PK
-        Long product_id FK
-        Integer deal_price
-        Integer stock
-        DateTime open_time
-        DateTime end_time
-        DateTime deleted_at
-    }
-
-    Order {
-        Long order_id PK
-        Long member_id FK
-        Long deal_id
-        Enum status "PENDING, PAID, SHIPPED, DELIVERED, CANCELED"
-        Integer total_price
-    }
-
-    OrderItem {
-        Long order_item_id PK
-        Long order_id FK
-        Long product_id FK
-        Integer quantity
-        Integer price
-        Integer order_price
-    }
-
-    Payment {
-        Long payment_id PK
-        Long order_id FK
-        Enum status "PENDING, COMPLETED, FAILED, REFUNDED"
-        Enum method "CARD, TOSS, TRANSFER, CASH"
-        Integer amount
-        DateTime paid_at
-    }
-
-    CartItem {
-        Long cart_item_id PK
-        Long member_id FK
-        Long product_id FK
-        Integer quantity
-        Integer price
-    }
-```
-
-> 📸 **[이미지]** ERD 툴(DBeaver, dbdiagram.io 등)로 시각화 후 추가 → `docs/images/erd.png`
->
-> GitHub에서는 위 Mermaid 다이어그램이 바로 렌더링됩니다.
-
-### 설계 포인트
-
-| 포인트 | 설명 |
-|--------|------|
-| Deal.stock 분리 | Product.stock_quantity와 별도 관리 → 딜 재고만 독립 제어 |
-| OrderItem.price 스냅샷 | 주문 시점 단가 저장 → 이후 가격 변경과 무관하게 보존 |
-| Deal.deleted_at | Soft delete → 삭제된 딜도 기존 주문에서 조회 가능 |
-| Order.deal_id (FK 없음) | 느슨한 참조 → V3 MSA 분리 시 별도 DB 이전 용이 |
 
 ---
 
