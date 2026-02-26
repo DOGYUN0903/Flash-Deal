@@ -2,7 +2,7 @@ package com.prj.flashdeal.domain.review.entity;
 
 import com.prj.flashdeal.domain.member.entity.Member;
 import com.prj.flashdeal.domain.product.entity.Product;
-import com.prj.flashdeal.global.entity.BaseEntity;
+import com.prj.flashdeal.global.entity.BaseTimeEntity;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -22,7 +22,7 @@ import lombok.NoArgsConstructor;
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @Table(name = "review")
-public class Review extends BaseEntity {
+public class Review extends BaseTimeEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

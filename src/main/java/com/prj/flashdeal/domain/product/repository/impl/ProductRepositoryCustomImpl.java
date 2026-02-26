@@ -47,7 +47,7 @@ public class ProductRepositoryCustomImpl implements ProductRepositoryCustom {
                 review.id.count(),
                 review.rating.avg()))
             .from(product)
-            .leftJoin(review).on(review.product.id.eq(product.id), review.isDeleted.isFalse())
+            .leftJoin(review).on(review.product.id.eq(product.id))
             .where(
                 productNameContains(cond.getProductName()),
                 priceGoe(cond.getMinPrice()),
@@ -96,7 +96,7 @@ public class ProductRepositoryCustomImpl implements ProductRepositoryCustom {
                 review.id.count(),
                 review.rating.avg()))
             .from(product)
-            .leftJoin(review).on(review.product.id.eq(product.id), review.isDeleted.isFalse())
+            .leftJoin(review).on(review.product.id.eq(product.id))
             .where(
                 product.isDeleted.isFalse(),
                 cond.isExcludeSoldOut()

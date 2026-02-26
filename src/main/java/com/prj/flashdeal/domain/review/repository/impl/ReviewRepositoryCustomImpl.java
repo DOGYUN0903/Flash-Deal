@@ -28,8 +28,7 @@ public class ReviewRepositoryCustomImpl implements ReviewRepositoryCustom {
         List<Review> reviews = queryFactory
             .selectFrom(review)
             .where(
-                review.product.id.eq(productId),
-                review.isDeleted.isFalse()
+                review.product.id.eq(productId)
             )
             .orderBy(review.createdAt.desc())
             .offset(pageable.getOffset())
@@ -40,8 +39,7 @@ public class ReviewRepositoryCustomImpl implements ReviewRepositoryCustom {
             .select(review.count())
             .from(review)
             .where(
-                review.product.id.eq(productId),
-                review.isDeleted.isFalse()
+                review.product.id.eq(productId)
             );
 
         return PageableExecutionUtils.getPage(reviews, pageable, countQuery::fetchOne);
