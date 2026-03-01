@@ -1,5 +1,7 @@
 package com.prj.flashdeal.domain.payment.service;
 
+import java.util.Optional;
+
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -26,14 +28,18 @@ public class PaymentService {
     private final TossPaymentClient tossPaymentClient;
 
     /**
-     * 결제 처리
+     * 결제 처리 (멱등성 보장: 이미 완료된 결제면 기존 결제 반환)
      */
     @Transactional
     public PaymentResponse processPayment(Long memberId, PaymentRequest request) {
         Order order = orderService.findOrder(request.getOrderId());
 
         validateOrderOwner(order, memberId);
-        validateNoDuplicatePayment(order.getId());
+
+        Optional<Payment> existing = paymentRepository.findByOrderId(order.getId());
+        if (existing.isPresent()) {
+            return PaymentResponse.from(existing.get());
+        }
 
         // 결제 금액 검증 (보안: 클라이언트가 보낸 금액과 실제 주문 금액 일치 확인)
         if (!request.getAmount().equals(order.getTotalPrice())) {
@@ -51,7 +57,7 @@ public class PaymentService {
     }
 
     /**
-     * 토스페이먼츠 결제 승인
+     * 토스페이먼츠 결제 승인 (멱등성 보장: 이미 완료된 결제면 기존 결제 반환)
      */
     @Transactional
     public PaymentResponse confirmTossPayment(Long memberId, TossConfirmRequest request) {
@@ -59,7 +65,11 @@ public class PaymentService {
 
         Order order = orderService.findOrder(orderId);
         validateOrderOwner(order, memberId);
-        validateNoDuplicatePayment(orderId);
+
+        Optional<Payment> existing = paymentRepository.findByOrderId(orderId);
+        if (existing.isPresent()) {
+            return PaymentResponse.from(existing.get());
+        }
 
         // 결제 금액 검증 (보안: 클라이언트가 보낸 금액과 실제 주문 금액 일치 확인)
         if (!request.getAmount().equals(order.getTotalPrice())) {
@@ -138,9 +148,4 @@ public class PaymentService {
         }
     }
 
-    private void validateNoDuplicatePayment(Long orderId) {
-        if (paymentRepository.findByOrderId(orderId).isPresent()) {
-            throw new PaymentException(PaymentErrorCode.PAYMENT_ALREADY_COMPLETED);
-        }
-    }
 }
