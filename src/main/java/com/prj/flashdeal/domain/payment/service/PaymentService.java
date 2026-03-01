@@ -30,39 +30,24 @@ public class PaymentService {
      */
     @Transactional
     public PaymentResponse processPayment(Long memberId, PaymentRequest request) {
-        // 주문 조회 및 권한 검증
         Order order = orderService.findOrder(request.getOrderId());
 
-        if (!order.getMember().getId().equals(memberId)) {
-            throw new PaymentException(PaymentErrorCode.UNAUTHORIZED_ORDER);
-        }
-
-        // 이미 결제가 존재하는지 확인
-        paymentRepository.findByOrderId(order.getId())
-            .ifPresent(payment -> {
-                throw new PaymentException(PaymentErrorCode.PAYMENT_ALREADY_COMPLETED);
-            });
+        validateOrderOwner(order, memberId);
+        validateNoDuplicatePayment(order.getId());
 
         // 결제 금액 검증 (보안: 클라이언트가 보낸 금액과 실제 주문 금액 일치 확인)
         if (!request.getAmount().equals(order.getTotalPrice())) {
             throw new PaymentException(PaymentErrorCode.PAYMENT_AMOUNT_MISMATCH);
         }
 
-        // 결제 생성
         Payment payment = Payment.builder()
             .order(order)
             .amount(request.getAmount())
             .build();
-
-        // 결제 완료 처리
         payment.completePayment(request.getPaymentMethod());
-
-        // 주문 상태 변경 (PENDING → PAID) 및 양방향 연관관계 설정
         order.completePayment(payment);
 
-        Payment savedPayment = paymentRepository.save(payment);
-
-        return PaymentResponse.from(savedPayment);
+        return PaymentResponse.from(paymentRepository.save(payment));
     }
 
     /**
@@ -70,35 +55,19 @@ public class PaymentService {
      */
     @Transactional
     public PaymentResponse confirmTossPayment(Long memberId, TossConfirmRequest request) {
-        // "ORDER-{id}-{uuid}" 또는 "ORDER-{id}" 형식에서 orderId 파싱
-        Long orderId;
-        try {
-            String withoutPrefix = request.getOrderId().replaceFirst("^ORDER-", "");
-            orderId = Long.parseLong(withoutPrefix.split("-")[0]);
-        } catch (NumberFormatException e) {
-            throw new PaymentException(PaymentErrorCode.PAYMENT_NOT_FOUND);
-        }
+        Long orderId = parseOrderId(request.getOrderId());
 
-        // 주문 조회 및 권한 검증
         Order order = orderService.findOrder(orderId);
-        if (!order.getMember().getId().equals(memberId)) {
-            throw new PaymentException(PaymentErrorCode.UNAUTHORIZED_ORDER);
-        }
+        validateOrderOwner(order, memberId);
+        validateNoDuplicatePayment(orderId);
 
-        // 중복 결제 확인
-        paymentRepository.findByOrderId(orderId).ifPresent(p -> {
-            throw new PaymentException(PaymentErrorCode.PAYMENT_ALREADY_COMPLETED);
-        });
-
-        // 금액 검증
+        // 결제 금액 검증 (보안: 클라이언트가 보낸 금액과 실제 주문 금액 일치 확인)
         if (!request.getAmount().equals(order.getTotalPrice())) {
             throw new PaymentException(PaymentErrorCode.PAYMENT_AMOUNT_MISMATCH);
         }
 
-        // 토스 API 승인 호출
         tossPaymentClient.confirm(request.getPaymentKey(), request.getOrderId(), request.getAmount());
 
-        // 결제 저장 및 주문 상태 변경
         Payment payment = Payment.builder()
             .order(order)
             .amount(request.getAmount())
@@ -117,10 +86,7 @@ public class PaymentService {
         Payment payment = paymentRepository.findById(paymentId)
             .orElseThrow(() -> new PaymentException(PaymentErrorCode.PAYMENT_NOT_FOUND));
 
-        // 권한 검증
-        if (!payment.getOrder().getMember().getId().equals(memberId)) {
-            throw new PaymentException(PaymentErrorCode.UNAUTHORIZED_ORDER);
-        }
+        validateOrderOwner(payment.getOrder(), memberId);
 
         return PaymentResponse.from(payment);
     }
@@ -133,10 +99,7 @@ public class PaymentService {
         Payment payment = paymentRepository.findByOrderId(orderId)
             .orElseThrow(() -> new PaymentException(PaymentErrorCode.PAYMENT_NOT_FOUND));
 
-        // 권한 검증
-        if (!payment.getOrder().getMember().getId().equals(memberId)) {
-            throw new PaymentException(PaymentErrorCode.UNAUTHORIZED_ORDER);
-        }
+        validateOrderOwner(payment.getOrder(), memberId);
 
         return PaymentResponse.from(payment);
     }
@@ -149,15 +112,35 @@ public class PaymentService {
         Payment payment = paymentRepository.findById(paymentId)
             .orElseThrow(() -> new PaymentException(PaymentErrorCode.PAYMENT_NOT_FOUND));
 
-        // 권한 검증
-        if (!payment.getOrder().getMember().getId().equals(memberId)) {
+        validateOrderOwner(payment.getOrder(), memberId);
+
+        payment.refund();
+        orderService.cancelOrder(memberId, payment.getOrder().getId());
+    }
+
+    // ---------------- private 헬퍼 메서드 ----------------
+
+    /**
+     * "ORDER-{id}-{uuid}" 형식에서 DB orderId 파싱
+     */
+    private Long parseOrderId(String tossOrderId) {
+        try {
+            String withoutPrefix = tossOrderId.replaceFirst("^ORDER-", "");
+            return Long.parseLong(withoutPrefix.split("-")[0]);
+        } catch (NumberFormatException e) {
+            throw new PaymentException(PaymentErrorCode.PAYMENT_NOT_FOUND);
+        }
+    }
+
+    private void validateOrderOwner(Order order, Long memberId) {
+        if (!order.getMember().getId().equals(memberId)) {
             throw new PaymentException(PaymentErrorCode.UNAUTHORIZED_ORDER);
         }
+    }
 
-        // 환불 처리
-        payment.refund();
-
-        // 주문 취소 (OrderService를 통한 재고 복구)
-        orderService.cancelOrder(memberId, payment.getOrder().getId());
+    private void validateNoDuplicatePayment(Long orderId) {
+        if (paymentRepository.findByOrderId(orderId).isPresent()) {
+            throw new PaymentException(PaymentErrorCode.PAYMENT_ALREADY_COMPLETED);
+        }
     }
 }

@@ -11,7 +11,7 @@ function PaymentSuccessContent() {
 
   useEffect(() => {
     const paymentKey = searchParams.get("paymentKey");
-    const orderId = searchParams.get("orderId");    // "ORDER-{id}" 형식
+    const orderId = searchParams.get("orderId"); // "ORDER-{id}-{uuid}" 형식
     const amount = Number(searchParams.get("amount"));
 
     if (!paymentKey || !orderId || !amount) {
@@ -23,7 +23,6 @@ function PaymentSuccessContent() {
       .confirmToss(paymentKey, orderId, amount)
       .then((res) => {
         toast.success("결제가 완료되었습니다.");
-        // "ORDER-{id}-{uuid}" 또는 "ORDER-{id}" 형식에서 숫자 id 추출
         const numericOrderId = orderId.replace("ORDER-", "").split("-")[0];
         router.push(`/orders/${numericOrderId}`);
       })
