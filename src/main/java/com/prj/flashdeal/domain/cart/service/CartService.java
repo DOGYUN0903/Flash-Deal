@@ -98,19 +98,16 @@ public class CartService {
 
     // ---------------- private 헬퍼 메서드 ----------------
     private CartItem findOrCreateCartItem(Member member, Product product, int quantity) {
-        return cartItemRepository.findByMemberAndProduct(member, product)
-            .map(existingItem -> {
-                existingItem.addQuantity(quantity);
-                return existingItem;
-            })
-            .orElseGet(() -> {
-                CartItem cartItem = CartItem.builder()
-                    .member(member)
-                    .product(product)
-                    .quantity(quantity)
-                    .build();
-                return cartItemRepository.save(cartItem);
-            });
+        Optional<CartItem> existing = cartItemRepository.findByMemberAndProduct(member, product);
+        if (existing.isPresent()) {
+            existing.get().addQuantity(quantity);
+            return existing.get();
+        }
+        return cartItemRepository.save(CartItem.builder()
+            .member(member)
+            .product(product)
+            .quantity(quantity)
+            .build());
     }
 
     private CartItem getCartItem(Long cartItemId) {
