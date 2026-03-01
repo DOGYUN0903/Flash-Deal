@@ -15,8 +15,6 @@ public interface OrderRepositoryCustom {
 
     Optional<Order> findByIdAndMemberId(Long orderId, Long memberId);
 
-    List<Order> findAllByMemberOrderByCreatedAtDesc(Member member);
-
     /**
      * 전체 주문 목록 조회 (관리자) - DTO Projection
      */

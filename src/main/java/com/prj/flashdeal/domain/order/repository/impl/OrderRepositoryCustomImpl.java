@@ -43,15 +43,6 @@ public class OrderRepositoryCustomImpl implements OrderRepositoryCustom {
     }
 
     @Override
-    public List<Order> findAllByMemberOrderByCreatedAtDesc(Member member) {
-        return queryFactory
-            .selectFrom(order)
-            .where(order.member.eq(member))
-            .orderBy(order.createdAt.desc())
-            .fetch();
-    }
-
-    @Override
     public Page<OrderSummaryResponse> findAllOrderSummaries(Pageable pageable) {
         List<OrderSummaryResponse> content = queryFactory
             .select(Projections.constructor(OrderSummaryResponse.class,

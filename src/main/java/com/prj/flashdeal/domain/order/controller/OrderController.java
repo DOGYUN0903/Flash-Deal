@@ -13,7 +13,6 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.prj.flashdeal.domain.order.dto.request.DirectOrderRequest;
 import com.prj.flashdeal.domain.order.dto.request.OrderCreateRequest;
 import com.prj.flashdeal.domain.order.dto.response.OrderResponse;
 import com.prj.flashdeal.domain.order.dto.response.OrderSummaryResponse;
@@ -37,13 +36,12 @@ public class OrderController {
      */
     @PostMapping("/from-cart")
     public ResponseEntity<ApiResponse<OrderResponse>> createOrderFromCart(
-        @AuthenticationPrincipal CustomUserDetails userPrincipal,
-        @Valid @RequestBody OrderCreateRequest request
+        @AuthenticationPrincipal CustomUserDetails userPrincipal
     ) {
         return ApiResponse.success(
             HttpStatus.CREATED,
             "주문이 생성되었습니다.",
-            orderService.createOrderFromCart(userPrincipal.getUserId(), request)
+            orderService.createOrderFromCart(userPrincipal.getUserId())
         );
     }
 
@@ -53,7 +51,7 @@ public class OrderController {
     @PostMapping("/direct")
     public ResponseEntity<ApiResponse<OrderResponse>> createDirectOrder(
         @AuthenticationPrincipal CustomUserDetails userPrincipal,
-        @Valid @RequestBody DirectOrderRequest request
+        @Valid @RequestBody OrderCreateRequest request
     ) {
         return ApiResponse.success(
             HttpStatus.CREATED,

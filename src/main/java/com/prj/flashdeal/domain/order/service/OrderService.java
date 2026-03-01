@@ -11,7 +11,6 @@ import com.prj.flashdeal.domain.cart.entity.CartItem;
 import com.prj.flashdeal.domain.cart.service.CartService;
 import com.prj.flashdeal.domain.member.entity.Member;
 import com.prj.flashdeal.domain.member.service.MemberService;
-import com.prj.flashdeal.domain.order.dto.request.DirectOrderRequest;
 import com.prj.flashdeal.domain.order.dto.request.OrderCreateRequest;
 import com.prj.flashdeal.domain.order.dto.response.OrderResponse;
 import com.prj.flashdeal.domain.order.dto.response.OrderSummaryResponse;
@@ -39,7 +38,7 @@ public class OrderService {
      * 주문 생성 (장바구니 → 주문 전환)
      */
     @Transactional
-    public OrderResponse createOrderFromCart(Long memberId, OrderCreateRequest request) {
+    public OrderResponse createOrderFromCart(Long memberId) {
         Member member = memberService.getMember(memberId);
 
         // 장바구니 조회
@@ -76,7 +75,7 @@ public class OrderService {
      * 바로 구매 (장바구니 거치지 않고 즉시 주문)
      */
     @Transactional
-    public OrderResponse createDirectOrder(Long memberId, DirectOrderRequest request) {
+    public OrderResponse createDirectOrder(Long memberId, OrderCreateRequest request) {
         Member member = memberService.getMember(memberId);
 
         // 상품 조회 및 검증
