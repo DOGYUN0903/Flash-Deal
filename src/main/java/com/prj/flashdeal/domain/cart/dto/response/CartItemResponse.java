@@ -15,7 +15,7 @@ public record CartItemResponse(
             cartItem.getId(),
             cartItem.getProduct().getId(),
             cartItem.getProduct().getName(),
-            cartItem.getPrice(),
+            cartItem.getProduct().getPrice(),
             cartItem.getQuantity(),
             cartItem.calculateItemTotalPrice()
         );

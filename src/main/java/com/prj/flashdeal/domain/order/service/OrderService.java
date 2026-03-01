@@ -146,6 +146,14 @@ public class OrderService {
             .orElseThrow(() -> new OrderException(OrderErrorCode.ORDER_NOT_FOUND));
     }
 
+    /**
+     * 구매 이력 확인 (리뷰 작성 검증용)
+     */
+    @Transactional(readOnly = true)
+    public boolean hasPurchased(Long memberId, Long productId) {
+        return orderRepository.existsPurchasedProduct(memberId, productId);
+    }
+
     // -------------------- 관리자 전용 메서드 --------------------
 
     /**

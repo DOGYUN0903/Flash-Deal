@@ -114,4 +114,17 @@ public class OrderRepositoryCustomImpl implements OrderRepositoryCustom {
             )
             .fetch();
     }
+
+    @Override
+    public boolean existsPurchasedProduct(Long memberId, Long productId) {
+        return queryFactory
+            .selectOne()
+            .from(orderItem)
+            .where(
+                orderItem.order.member.id.eq(memberId),
+                orderItem.product.id.eq(productId),
+                orderItem.order.status.in(OrderStatus.PAID, OrderStatus.SHIPPED, OrderStatus.DELIVERED)
+            )
+            .fetchFirst() != null;
+    }
 }

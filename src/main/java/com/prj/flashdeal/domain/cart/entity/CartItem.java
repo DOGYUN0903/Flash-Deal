@@ -42,15 +42,11 @@ public class CartItem extends BaseTimeEntity {
     @Column(nullable = false)
     private int quantity;
 
-    @Column(nullable = false)
-    private int price; // 상품 추가 시점의 가격
-
     @Builder
     private CartItem(Member member, Product product, Integer quantity) {
         this.member = member;
         this.product = product;
         this.quantity = quantity;
-        this.price = product.getPrice();
     }
 
     public void addQuantity(int quantity) {
@@ -61,7 +57,7 @@ public class CartItem extends BaseTimeEntity {
     }
 
     public int calculateItemTotalPrice() {
-        return this.price * this.quantity;
+        return this.product.getPrice() * this.quantity;
     }
 
     public void updateQuantity(int quantity) {

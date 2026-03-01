@@ -31,4 +31,9 @@ public interface OrderRepositoryCustom {
      * 만료된 PENDING 주문 조회 (스케줄러용)
      */
     List<Order> findExpiredPendingOrders(LocalDateTime expiredBefore);
+
+    /**
+     * 구매 이력 확인 (리뷰 작성 검증용)
+     */
+    boolean existsPurchasedProduct(Long memberId, Long productId);
 }

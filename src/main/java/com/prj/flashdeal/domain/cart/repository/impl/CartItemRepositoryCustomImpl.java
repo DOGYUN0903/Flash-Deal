@@ -10,7 +10,6 @@ import org.springframework.stereotype.Repository;
 import com.prj.flashdeal.domain.cart.dto.response.CartItemResponse;
 import com.prj.flashdeal.domain.cart.repository.CartItemRepositoryCustom;
 import com.prj.flashdeal.domain.member.entity.Member;
-import com.prj.flashdeal.domain.product.entity.QProduct;
 import com.querydsl.core.types.Projections;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 
@@ -29,9 +28,9 @@ public class CartItemRepositoryCustomImpl implements CartItemRepositoryCustom {
                 cartItem.id,
                 product.id,
                 product.name,
-                cartItem.price,
+                product.price,
                 cartItem.quantity,
-                cartItem.price.multiply(cartItem.quantity))
+                product.price.multiply(cartItem.quantity))
             )
             .from(cartItem)
             .join(cartItem.product, product)
