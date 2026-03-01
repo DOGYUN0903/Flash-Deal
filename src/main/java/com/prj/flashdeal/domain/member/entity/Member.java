@@ -1,5 +1,7 @@
 package com.prj.flashdeal.domain.member.entity;
 
+import com.prj.flashdeal.domain.member.exception.MemberErrorCode;
+import com.prj.flashdeal.domain.member.exception.MemberException;
 import com.prj.flashdeal.global.entity.BaseEntity;
 
 import jakarta.persistence.Column;
@@ -60,6 +62,12 @@ public class Member extends BaseEntity {
         this.phoneNumber = phoneNumber;
         this.role = Role.USER;
         this.status = MemberStatus.ACTIVE;
+    }
+
+    public void validateActive() {
+        if (this.status != MemberStatus.ACTIVE) {
+            throw new MemberException(MemberErrorCode.INACTIVE_MEMBER);
+        }
     }
 
     /**
