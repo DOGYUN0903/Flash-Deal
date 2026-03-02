@@ -13,6 +13,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import com.prj.flashdeal.domain.cart.dto.request.CartItemAddRequest;
 import com.prj.flashdeal.domain.cart.dto.request.CartItemUpdateRequest;
@@ -24,10 +25,7 @@ import com.prj.flashdeal.domain.cart.repository.CartItemRepository;
 import com.prj.flashdeal.domain.member.entity.Member;
 import com.prj.flashdeal.domain.member.service.MemberService;
 import com.prj.flashdeal.domain.product.entity.Product;
-import com.prj.flashdeal.domain.product.entity.ProductStatus;
 import com.prj.flashdeal.domain.product.service.ProductService;
-
-import java.lang.reflect.Field;
 
 @ExtendWith(MockitoExtension.class)
 @DisplayName("CartService 단위 테스트")
@@ -56,8 +54,8 @@ class CartServiceTest {
         Member member = createMember(memberId);
         Product product = createProduct(productId, 10000, 100);
         CartItemAddRequest request = new CartItemAddRequest();
-        setField(request, "productId", productId);
-        setField(request, "quantity", quantity);
+        ReflectionTestUtils.setField(request, "productId", productId);
+        ReflectionTestUtils.setField(request, "quantity", quantity);
 
         given(memberService.getMember(memberId)).willReturn(member);
         given(productService.findCartableProduct(productId)).willReturn(product);
@@ -91,8 +89,8 @@ class CartServiceTest {
             .build();
 
         CartItemAddRequest request = new CartItemAddRequest();
-        setField(request, "productId", productId);
-        setField(request, "quantity", addQuantity);
+        ReflectionTestUtils.setField(request, "productId", productId);
+        ReflectionTestUtils.setField(request, "quantity", addQuantity);
 
         given(memberService.getMember(memberId)).willReturn(member);
         given(productService.findCartableProduct(productId)).willReturn(product);
@@ -149,7 +147,7 @@ class CartServiceTest {
             .build();
 
         CartItemUpdateRequest request = new CartItemUpdateRequest();
-        setField(request, "quantity", newQuantity);
+        ReflectionTestUtils.setField(request, "quantity", newQuantity);
 
         given(memberService.getMember(memberId)).willReturn(member);
         given(cartItemRepository.findById(cartItemId)).willReturn(Optional.of(cartItem));
@@ -180,7 +178,7 @@ class CartServiceTest {
             .build();
 
         CartItemUpdateRequest request = new CartItemUpdateRequest();
-        setField(request, "quantity", 5);
+        ReflectionTestUtils.setField(request, "quantity", 5);
 
         given(memberService.getMember(memberId)).willReturn(member);
         given(cartItemRepository.findById(cartItemId)).willReturn(Optional.of(cartItem));
@@ -233,17 +231,15 @@ class CartServiceTest {
         verify(cartItemRepository, times(1)).deleteAllByMember(member);
     }
 
-    // 테스트 픽스처 (Test Fixture) 생성 헬퍼 메서드
+    // ========== 헬퍼 메서드 ==========
+
     private Member createMember(Long id) {
         Member member = Member.builder()
             .email("test@test.com")
             .password("password123")
             .name("테스트")
             .build();
-
-        // ID 설정 (Reflection 사용)
-        setField(member, "id", id);
-
+        ReflectionTestUtils.setField(member, "id", id);
         return member;
     }
 
@@ -254,20 +250,7 @@ class CartServiceTest {
             .price(price)
             .build();
 
-        // addStock으로 재고 추가
         product.addStock(stockQuantity);
-
         return product;
-    }
-
-    // Reflection 헬퍼 메서드
-    private void setField(Object target, String fieldName, Object value) {
-        try {
-            Field field = target.getClass().getDeclaredField(fieldName);
-            field.setAccessible(true);
-            field.set(target, value);
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to set field: " + fieldName, e);
-        }
     }
 }

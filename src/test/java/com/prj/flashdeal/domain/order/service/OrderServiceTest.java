@@ -4,7 +4,6 @@ import static org.assertj.core.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.BDDMockito.*;
 
-import java.lang.reflect.Field;
 import java.util.List;
 import java.util.Optional;
 
@@ -14,6 +13,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import com.prj.flashdeal.domain.cart.entity.CartItem;
 import com.prj.flashdeal.domain.cart.service.CartService;
@@ -106,8 +106,8 @@ class OrderServiceTest {
         Product product = createProduct(productId, 15000, 50);
 
         OrderCreateRequest request = new OrderCreateRequest();
-        setField(request, "productId", productId);
-        setField(request, "quantity", quantity);
+        ReflectionTestUtils.setField(request, "productId", productId);
+        ReflectionTestUtils.setField(request, "quantity", quantity);
 
         given(memberService.getMember(memberId)).willReturn(member);
         given(productService.findCartableProduct(productId)).willReturn(product);
@@ -193,7 +193,7 @@ class OrderServiceTest {
             .name("테스터")
             .phoneNumber("010-1234-5678")
             .build();
-        setField(member, "id", id);
+        ReflectionTestUtils.setField(member, "id", id);
         return member;
     }
 
@@ -203,39 +203,18 @@ class OrderServiceTest {
             .description("테스트 상품 설명")
             .price(price)
             .build();
-        setField(product, "id", id);
+        ReflectionTestUtils.setField(product, "id", id);
         product.addStock(stockQuantity);
         return product;
     }
 
     private Order createOrderWithProduct(Long orderId, Member member, Product product, int quantity) {
         Order order = Order.createOrder(member);
-        setField(order, "id", orderId);
+        ReflectionTestUtils.setField(order, "id", orderId);
 
         OrderItem orderItem = OrderItem.createOrderItem(product, quantity);
         order.addOrderItem(orderItem);
 
         return order;
-    }
-
-    private void setField(Object target, String fieldName, Object value) {
-        try {
-            Field field = findField(target.getClass(), fieldName);
-            field.setAccessible(true);
-            field.set(target, value);
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to set field: " + fieldName, e);
-        }
-    }
-
-    private Field findField(Class<?> clazz, String fieldName) throws NoSuchFieldException {
-        try {
-            return clazz.getDeclaredField(fieldName);
-        } catch (NoSuchFieldException e) {
-            if (clazz.getSuperclass() != null) {
-                return findField(clazz.getSuperclass(), fieldName);
-            }
-            throw e;
-        }
     }
 }

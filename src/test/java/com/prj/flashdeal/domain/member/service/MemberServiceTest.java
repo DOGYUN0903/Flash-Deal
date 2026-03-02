@@ -3,7 +3,6 @@ package com.prj.flashdeal.domain.member.service;
 import static org.assertj.core.api.Assertions.*;
 import static org.mockito.BDDMockito.*;
 
-import java.lang.reflect.Field;
 import java.util.Optional;
 
 import org.junit.jupiter.api.DisplayName;
@@ -13,6 +12,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import com.prj.flashdeal.domain.member.dto.request.MemberUpdateRequest;
 import com.prj.flashdeal.domain.member.dto.request.PasswordChangeRequest;
@@ -72,7 +72,7 @@ class MemberServiceTest {
         // given
         Long userId = 1L;
         Member member = createMember(userId);
-        setField(member, "status", MemberStatus.BANNED); // isDeleted = false, status = BANNED
+        ReflectionTestUtils.setField(member, "status", MemberStatus.BANNED);
 
         given(memberRepository.findById(userId)).willReturn(Optional.of(member));
 
@@ -135,8 +135,8 @@ class MemberServiceTest {
         Long userId = 1L;
         Member member = createMember(userId);
         MemberUpdateRequest request = new MemberUpdateRequest();
-        setField(request, "name", "수정된이름");
-        setField(request, "phoneNumber", "010-9999-8888");
+        ReflectionTestUtils.setField(request, "name", "수정된이름");
+        ReflectionTestUtils.setField(request, "phoneNumber", "010-9999-8888");
 
         given(memberRepository.findById(userId)).willReturn(Optional.of(member));
 
@@ -153,8 +153,8 @@ class MemberServiceTest {
         // given
         Long userId = 1L;
         MemberUpdateRequest request = new MemberUpdateRequest();
-        setField(request, "name", "수정된이름");
-        setField(request, "phoneNumber", "010-9999-8888");
+        ReflectionTestUtils.setField(request, "name", "수정된이름");
+        ReflectionTestUtils.setField(request, "phoneNumber", "010-9999-8888");
 
         given(memberRepository.findById(userId)).willReturn(Optional.empty());
 
@@ -172,7 +172,7 @@ class MemberServiceTest {
         Long userId = 1L;
         String rawPassword = "Test1234!";
         Member member = createMember(userId);
-        setField(member, "password", "encodedPassword");
+        ReflectionTestUtils.setField(member, "password", "encodedPassword");
 
         given(memberRepository.findById(userId)).willReturn(Optional.of(member));
         given(passwordEncoder.matches(rawPassword, "encodedPassword")).willReturn(true);
@@ -189,7 +189,7 @@ class MemberServiceTest {
         Long userId = 1L;
         String wrongPassword = "wrongPassword";
         Member member = createMember(userId);
-        setField(member, "password", "encodedPassword");
+        ReflectionTestUtils.setField(member, "password", "encodedPassword");
 
         given(memberRepository.findById(userId)).willReturn(Optional.of(member));
         given(passwordEncoder.matches(wrongPassword, "encodedPassword")).willReturn(false);
@@ -207,11 +207,11 @@ class MemberServiceTest {
         // given
         Long userId = 1L;
         Member member = createMember(userId);
-        setField(member, "password", "encodedCurrentPassword");
+        ReflectionTestUtils.setField(member, "password", "encodedCurrentPassword");
 
         PasswordChangeRequest request = new PasswordChangeRequest();
-        setField(request, "currentPassword", "Current1234!");
-        setField(request, "newPassword", "New1234!!");
+        ReflectionTestUtils.setField(request, "currentPassword", "Current1234!");
+        ReflectionTestUtils.setField(request, "newPassword", "New1234!!");
 
         given(memberRepository.findById(userId)).willReturn(Optional.of(member));
         given(passwordEncoder.matches("Current1234!", "encodedCurrentPassword")).willReturn(true);
@@ -230,11 +230,11 @@ class MemberServiceTest {
         // given
         Long userId = 1L;
         Member member = createMember(userId);
-        setField(member, "password", "encodedCurrentPassword");
+        ReflectionTestUtils.setField(member, "password", "encodedCurrentPassword");
 
         PasswordChangeRequest request = new PasswordChangeRequest();
-        setField(request, "currentPassword", "WrongPassword!");
-        setField(request, "newPassword", "New1234!!");
+        ReflectionTestUtils.setField(request, "currentPassword", "WrongPassword!");
+        ReflectionTestUtils.setField(request, "newPassword", "New1234!!");
 
         given(memberRepository.findById(userId)).willReturn(Optional.of(member));
         given(passwordEncoder.matches("WrongPassword!", "encodedCurrentPassword")).willReturn(false);
@@ -253,28 +253,7 @@ class MemberServiceTest {
             .name("테스트유저")
             .phoneNumber("010-1234-5678")
             .build();
-        setField(member, "id", id);
+        ReflectionTestUtils.setField(member, "id", id);
         return member;
-    }
-
-    private void setField(Object target, String fieldName, Object value) {
-        try {
-            Field field = findField(target.getClass(), fieldName);
-            field.setAccessible(true);
-            field.set(target, value);
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to set field: " + fieldName, e);
-        }
-    }
-
-    private Field findField(Class<?> clazz, String fieldName) throws NoSuchFieldException {
-        try {
-            return clazz.getDeclaredField(fieldName);
-        } catch (NoSuchFieldException e) {
-            if (clazz.getSuperclass() != null) {
-                return findField(clazz.getSuperclass(), fieldName);
-            }
-            throw e;
-        }
     }
 }

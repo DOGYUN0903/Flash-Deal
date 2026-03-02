@@ -4,10 +4,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import java.lang.reflect.Field;
-
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import com.prj.flashdeal.domain.member.exception.MemberException;
 
@@ -44,7 +43,7 @@ class MemberTest {
     void validateActive_Fail_Dormant() {
         // given
         Member member = createMember();
-        setField(member, "status", MemberStatus.DORMANT);
+        ReflectionTestUtils.setField(member, "status", MemberStatus.DORMANT);
 
         // when & then
         assertThatThrownBy(() -> member.validateActive())
@@ -56,7 +55,7 @@ class MemberTest {
     void validateActive_Fail_Banned() {
         // given
         Member member = createMember();
-        setField(member, "status", MemberStatus.BANNED);
+        ReflectionTestUtils.setField(member, "status", MemberStatus.BANNED);
 
         // when & then
         assertThatThrownBy(() -> member.validateActive())
@@ -136,15 +135,5 @@ class MemberTest {
             .name("테스트유저")
             .phoneNumber("010-1234-5678")
             .build();
-    }
-
-    private void setField(Object target, String fieldName, Object value) {
-        try {
-            Field field = target.getClass().getDeclaredField(fieldName);
-            field.setAccessible(true);
-            field.set(target, value);
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to set field: " + fieldName, e);
-        }
     }
 }
