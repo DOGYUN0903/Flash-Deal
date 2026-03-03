@@ -65,7 +65,8 @@ public class PaymentController {
         @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "결제 금액 불일치"),
         @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "인증 필요"),
         @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "주문자 불일치"),
-        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "존재하지 않는 주문")
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "존재하지 않는 주문"),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "502", description = "토스페이먼츠 승인 실패")
     })
     @PostMapping("/toss/confirm")
     public ResponseEntity<ApiResponse<PaymentResponse>> confirmTossPayment(
