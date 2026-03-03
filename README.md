@@ -1,43 +1,48 @@
-# Flash Deal
+# ⚡ Flash Deal
 
 선착순 한정 수량 상품을 구매할 수 있는 이커머스 플랫폼입니다.
 회원가입/로그인부터 상품 탐색, 장바구니, 주문, 결제, 리뷰까지 이커머스 핵심 플로우를 구현했습니다.
 
 ---
 
-## 목차
+## 📋 목차
 
-1. [프로젝트 소개](#1-프로젝트-소개)
-2. [기술 스택](#2-기술-스택)
-3. [시스템 아키텍처](#3-시스템-아키텍처)
-4. [ERD](#4-erd)
-5. [API 명세](#5-api-명세)
-6. [기술적 의사결정](#6-기술적-의사결정)
-7. [실행 방법](#7-실행-방법)
+- [✨ 프로젝트 소개](#-프로젝트-소개)
+- [🛠️ 기술 스택](#️-기술-스택)
+- [🏗️ 시스템 아키텍처](#️-시스템-아키텍처)
+- [📊 ERD](#-erd)
+- [💡 기술적 의사결정](#-기술적-의사결정)
 
 ---
 
-## 1. 프로젝트 소개
+## ✨ 프로젝트 소개
 
 Flash Deal은 한정 수량 상품을 선착순으로 구매하는 이커머스 플랫폼입니다.
 
 단순한 기능 구현을 넘어, 서비스가 성장하면서 마주치는 **실제 성능 병목을 직접 재현하고, 여러 기술을 비교·분석한 뒤 트레이드오프를 고려하여 해결책을 선택하는 과정**을 담은 포트폴리오 프로젝트입니다.
 
-### 구현 도메인
+|                |                                                           |
+|----------------|-----------------------------------------------------------|
+| 🗓️ **개발 기간** | 2026.02 ~ 진행 중                                          |
+| 👤 **개발 인원** | 1인 (개인 프로젝트)                                          |
+| 🌐 **배포 URL** | https://flash-deal-eight.vercel.app                      |
+| 📄 **API 명세** | https://flashdeal.서버.한국/swagger-ui/index.html           |
+
+### 🗂️ 구현 도메인
 
 | 도메인 | 주요 기능 |
 |--------|----------|
-| Auth | 회원가입, 로그인, 로그아웃 |
-| Member | 프로필 조회/수정, 비밀번호 변경 |
-| Product | 상품 등록/수정/삭제/검색 (어드민), 상품 조회/검색 (일반) |
-| Cart | 장바구니 담기/조회/수량 수정/삭제/비우기 |
-| Order | 장바구니 주문, 바로 구매, 주문 조회/취소, 배송 관리 (어드민) |
-| Payment | 결제 처리, TossPayments 승인, 결제 조회, 환불 |
-| Review | 구매 확인 후 리뷰 작성, 상품별 리뷰 조회 |
+| 🔐 Auth | 회원가입, 로그인, 로그아웃 |
+| 👤 Member | 프로필 조회/수정, 비밀번호 변경 |
+| 📦 Product | 상품 등록/수정/삭제/검색 (어드민), 상품 조회/검색 (일반) |
+| 🛒 Cart | 장바구니 담기/조회/수량 수정/삭제/비우기 |
+| 📝 Order | 장바구니 주문, 바로 구매, 주문 조회/취소, 배송 관리 (어드민) |
+| 💳 Payment | 결제 처리, TossPayments 승인, 결제 조회, 환불 |
+| ⭐ Review | 구매 확인 후 리뷰 작성, 상품별 리뷰 조회 |
 
 ---
 
-## 2. 기술 스택
+## 🛠️ 기술 스택
 
 <div align="center">
 
@@ -84,36 +89,15 @@ Flash Deal은 한정 수량 상품을 선착순으로 구매하는 이커머스 
 
 ---
 
-## 3. 시스템 아키텍처
+## 🏗️ 시스템 아키텍처
 
-```
-┌─────────────────────────────────────────────────────┐
-│                  Client (Next.js)                    │
-└──────────────────────────┬──────────────────────────┘
-                           │ HTTP
-┌──────────────────────────▼──────────────────────────┐
-│              Spring Boot Application :8080           │
-│                                                      │
-│  ┌───────────┐  ┌──────────┐  ┌──────────────────┐  │
-│  │   Auth    │  │ Product  │  │  Order / Payment │  │
-│  │   Cart    │  │  Member  │  │      Review      │  │
-│  └───────────┘  └──────────┘  └──────────────────┘  │
-│                                                      │
-│      Spring Security (Session)  │  QueryDSL  │ JPA  │
-└──────┬──────────────────────────────────┬────────────┘
-       │                                  │
-┌──────▼──────┐                  ┌────────▼────────┐
-│  MySQL 8.0  │                  │   NCP Object    │
-│    :3306    │                  │  Storage (S3)   │
-└─────────────┘                  └─────────────────┘
-                                          │
-                                 ┌────────▼────────┐
-                                 │  TossPayments   │
-                                 │      API        │
-                                 └─────────────────┘
-```
+![Flash Deal Architecture](images/flash-deal_MVP_아키텍처.PNG)
 
-### 패키지 구조
+### 🔄 시퀀스 다이어그램 (주문 & 결제)
+
+![시퀀스 다이어그램](images/시퀀스_다이어그램.PNG)
+
+### 📁 패키지 구조
 
 ```
 src/main/java/com/prj/flashdeal/
@@ -136,7 +120,7 @@ src/main/java/com/prj/flashdeal/
 
 ---
 
-## 4. ERD
+## 📊 ERD
 
 ![Flash Deal ERD](images/flash-deal_MVP_ERD.png)
 
@@ -153,85 +137,9 @@ src/main/java/com/prj/flashdeal/
 
 ---
 
-## 5. API 명세
+## 💡 기술적 의사결정
 
-> Swagger UI: `http://localhost:8080/swagger-ui/index.html`
-
-### Auth
-
-| Method | URL | 설명 | 인증 |
-|--------|-----|------|------|
-| POST | `/api/auth/signup` | 회원가입 | 불필요 |
-| POST | `/api/auth/login` | 로그인 | 불필요 |
-| POST | `/api/auth/logout` | 로그아웃 | USER |
-
-### Member
-
-| Method | URL | 설명 | 인증 |
-|--------|-----|------|------|
-| GET | `/api/members/me` | 내 프로필 조회 | USER |
-| PATCH | `/api/members/me` | 프로필 수정 (이름, 전화번호) | USER |
-| POST | `/api/members/me/verify-password` | 비밀번호 확인 | USER |
-| PATCH | `/api/members/me/password` | 비밀번호 변경 | USER |
-
-### Product
-
-| Method | URL | 설명 | 인증 |
-|--------|-----|------|------|
-| GET | `/api/products` | 상품 목록 검색 (페이징) | 불필요 |
-| GET | `/api/products/{productId}` | 상품 상세 조회 | 불필요 |
-| POST | `/api/admin/products` | 상품 등록 (이미지 업로드) | ADMIN |
-| GET | `/api/admin/products` | 전체 상품 검색 (어드민) | ADMIN |
-| GET | `/api/admin/products/{productId}` | 상품 상세 조회 (어드민) | ADMIN |
-| PATCH | `/api/admin/products/{productId}` | 상품 수정 | ADMIN |
-| DELETE | `/api/admin/products/{productId}` | 상품 삭제 (소프트 딜리트) | ADMIN |
-
-### Cart
-
-| Method | URL | 설명 | 인증 |
-|--------|-----|------|------|
-| POST | `/api/carts` | 장바구니 담기 | USER |
-| GET | `/api/carts` | 장바구니 조회 | USER |
-| PATCH | `/api/carts/{cartItemId}` | 수량 수정 | USER |
-| DELETE | `/api/carts/{cartItemId}` | 항목 삭제 | USER |
-| DELETE | `/api/carts` | 장바구니 전체 비우기 | USER |
-
-### Order
-
-| Method | URL | 설명 | 인증 |
-|--------|-----|------|------|
-| POST | `/api/orders/from-cart` | 장바구니에서 주문 생성 | USER |
-| POST | `/api/orders/direct` | 바로 구매 | USER |
-| GET | `/api/orders/{orderId}` | 주문 단건 조회 | USER |
-| GET | `/api/orders` | 내 주문 목록 (페이징) | USER |
-| DELETE | `/api/orders/{orderId}` | 주문 취소 | USER |
-| GET | `/api/admin/orders` | 전체 주문 목록 (어드민) | ADMIN |
-| GET | `/api/admin/orders/{orderId}` | 주문 상세 (어드민) | ADMIN |
-| PATCH | `/api/admin/orders/{orderId}/ship` | 배송 시작 | ADMIN |
-| PATCH | `/api/admin/orders/{orderId}/deliver` | 배송 완료 | ADMIN |
-
-### Payment
-
-| Method | URL | 설명 | 인증 |
-|--------|-----|------|------|
-| POST | `/api/payments` | 결제 처리 (일반) | USER |
-| POST | `/api/payments/toss/confirm` | TossPayments 결제 승인 | USER |
-| GET | `/api/payments/{paymentId}` | 결제 단건 조회 | USER |
-| GET | `/api/payments?orderId=` | 주문 ID로 결제 조회 | USER |
-| POST | `/api/payments/{paymentId}/refund` | 환불 처리 | USER |
-
-### Review
-
-| Method | URL | 설명 | 인증 |
-|--------|-----|------|------|
-| POST | `/api/products/{productId}/reviews` | 리뷰 작성 (구매자만) | USER |
-| GET | `/api/products/{productId}/reviews` | 상품 리뷰 목록 (페이징) | 불필요 |
-
----
-
-## 6. 기술적 의사결정
-
-### 세션 기반 인증 채택
+### 🔐 세션 기반 인증 채택
 
 **배경:** 인증 방식으로 세션과 JWT 중 선택이 필요했습니다.
 
@@ -246,18 +154,17 @@ src/main/java/com/prj/flashdeal/
 
 ---
 
-### 가격 스냅샷 저장 (CartItem, OrderItem)
+### 💰 가격 스냅샷 저장 (OrderItem)
 
 **배경:** 상품 가격은 시간이 지나면 변경될 수 있습니다.
 
-- `CartItem.price`: 장바구니에 담을 **당시의** 단가 저장
 - `OrderItem.price`, `OrderItem.order_price`: 주문 **당시의** 단가 및 금액 저장
 
-주문 이후 상품 가격이 변경되더라도 결제 금액 내역이 보존됩니다. CartResponse는 **현재** 상품 가격을 반영하여 사용자에게 최신 금액을 보여줍니다.
+주문 이후 상품 가격이 변경되더라도 결제 금액 내역이 보존됩니다.
 
 ---
 
-### ProductStatus와 재고 수량 연동
+### 📦 ProductStatus와 재고 수량 연동
 
 **배경:** 상품 상태와 재고 수량이 별개로 관리되면 정합성 문제가 발생합니다.
 
@@ -270,7 +177,7 @@ src/main/java/com/prj/flashdeal/
 
 ---
 
-### Soft Delete 패턴 (Member, Product)
+### 🗑️ Soft Delete 패턴 (Member, Product)
 
 **배경:** 물리적 삭제 시 연관된 주문/리뷰 데이터의 정합성이 깨집니다.
 
@@ -283,7 +190,7 @@ src/main/java/com/prj/flashdeal/
 
 ---
 
-### 결제 멱등성 처리
+### 🔄 결제 멱등성 처리
 
 **배경:** 네트워크 오류 등으로 결제 요청이 중복 전송될 수 있습니다.
 
@@ -299,7 +206,7 @@ src/main/java/com/prj/flashdeal/
 
 ---
 
-### 도메인 객체에 비즈니스 로직 캡슐화
+### 🧩 도메인 객체에 비즈니스 로직 캡슐화
 
 **배경:** 비즈니스 규칙을 서비스 계층에만 두면 엔티티가 단순 데이터 컨테이너로 전락하고, 같은 검증이 여러 서비스에 흩어집니다.
 
@@ -316,7 +223,7 @@ order.ship() / order.deliver()  // 배송 상태 전환 검증 포함
 
 ---
 
-### QueryDSL 도입
+### 🔍 QueryDSL 도입
 
 **배경:** 상품 검색 시 카테고리, 이름, 상태, 가격 범위 등 조건이 동적으로 조합됩니다.
 
@@ -328,66 +235,3 @@ order.ship() / order.deliver()  // 배송 상태 전환 검증 포함
 
 `*RepositoryCustom` 인터페이스 + `*RepositoryCustomImpl` 구현체 패턴으로 Spring Data JPA와 QueryDSL을 함께 사용합니다.
 
----
-
-## 7. 실행 방법
-
-### 사전 요구사항
-
-- Java 17
-- MySQL 8.0
-- Node.js 18+
-
-### 환경 변수
-
-```bash
-# MySQL
-MYSQL_DEV_HOST=localhost:3306
-MYSQL_DEV_DBNAME=flashdeal
-MYSQL_DEV_USERNAME=root
-MYSQL_DEV_PASSWORD=your_password
-
-# TossPayments
-TOSS_BASE_URL=https://api.tosspayments.com
-TOSS_SECRET_KEY=your_toss_secret_key
-
-# NCP Object Storage
-NCP_ACCESS_KEY=your_ncp_access_key
-NCP_SECRET_KEY=your_ncp_secret_key
-NCP_BUCKET=flash-deal-images
-NCP_DEFAULT_IMAGE_URL=https://kr.object.ncloudstorage.com/flash-deal-images/default.png
-```
-
-### 백엔드 실행
-
-```bash
-# 데이터베이스 생성
-mysql -u root -p -e "CREATE DATABASE flashdeal CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
-
-# 애플리케이션 실행 (data.sql로 테스트 데이터 자동 삽입)
-./gradlew bootRun --args='--spring.profiles.active=dev'
-```
-
-### 프론트엔드 실행
-
-```bash
-cd frontend
-npm install
-npm run dev
-```
-
-### 접속 주소
-
-| 서비스 | URL |
-|--------|-----|
-| Frontend | http://localhost:3001 |
-| Backend API | http://localhost:8080 |
-| Swagger UI | http://localhost:8080/swagger-ui/index.html |
-| Prometheus Metrics | http://localhost:8080/actuator/prometheus |
-
-### 테스트 계정
-
-| 역할 | 이메일 | 비밀번호 |
-|------|--------|---------|
-| 어드민 | `admin@test.com` | `test1234` |
-| 일반 사용자 | `user1@test.com` ~ `user10000@test.com` | `test1234` |
