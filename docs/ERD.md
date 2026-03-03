@@ -1,6 +1,6 @@
 # Flash Deal ERD 정리
 
-## Member (member)
+## Member (members)
 
 | 한국어 | 영어 (컬럼명) | 타입 | NULL 여부 |
 |--------|--------------|------|-----------|
@@ -11,13 +11,16 @@
 | 전화번호 | phone_number | VARCHAR | NOT NULL |
 | 역할 | role | VARCHAR | NOT NULL |
 | 상태 | status | VARCHAR | NOT NULL |
+| 삭제 여부 | is_deleted | BOOLEAN | NOT NULL |
 | 생성일시 | created_at | DATETIME | NOT NULL |
 | 수정일시 | updated_at | DATETIME | NOT NULL |
-| 삭제일시 | deleted_at | DATETIME | NULL |
+
+> **role**: `USER`, `ADMIN`
+> **status**: `ACTIVE`, `DORMANT`, `WITHDRAWN`, `BANNED`
 
 ---
 
-## Product (product)
+## Product (products)
 
 | 한국어 | 영어 (컬럼명) | 타입 | NULL 여부 |
 |--------|--------------|------|-----------|
@@ -28,35 +31,25 @@
 | 재고 수량 | stock_quantity | INT | NOT NULL |
 | 상태 | status | VARCHAR | NOT NULL |
 | 이미지 URL | image_url | VARCHAR | NULL |
+| 카테고리 | category | VARCHAR | NOT NULL |
+| 삭제 여부 | is_deleted | BOOLEAN | NOT NULL |
 | 생성일시 | created_at | DATETIME | NOT NULL |
 | 수정일시 | updated_at | DATETIME | NOT NULL |
-| 삭제일시 | deleted_at | DATETIME | NULL |
+
+> **status**: `PREPARING`, `ON_SALE`, `SOLD_OUT`
+> **category**: `ELECTRONICS`, `FASHION`, `FOOD`, `SPORTS`, `BEAUTY`, `FURNITURE`, `BOOKS`
 
 ---
 
-## Deal (deal)
-
-| 한국어 | 영어 (컬럼명) | 타입 | NULL 여부 |
-|--------|--------------|------|-----------|
-| 딜 ID | deal_id | BIGINT | NOT NULL (PK) |
-| 상품 ID | product_id | BIGINT | NOT NULL (FK → product) |
-| 딜 가격 | deal_price | INT | NOT NULL |
-| 재고 | stock | INT | NOT NULL |
-| 오픈 시간 | open_time | DATETIME | NOT NULL |
-| 종료 시간 | end_time | DATETIME | NOT NULL |
-| 삭제일시 | deleted_at | DATETIME | NULL |
-
----
-
-## CartItem (cart_item)
+## CartItem (cart_items)
 
 | 한국어 | 영어 (컬럼명) | 타입 | NULL 여부 |
 |--------|--------------|------|-----------|
 | 장바구니 항목 ID | cart_item_id | BIGINT | NOT NULL (PK) |
-| 회원 ID | member_id | BIGINT | NOT NULL (FK → member) |
-| 상품 ID | product_id | BIGINT | NOT NULL (FK → product) |
+| 회원 ID | member_id | BIGINT | NOT NULL (FK → members) |
+| 상품 ID | product_id | BIGINT | NOT NULL (FK → products) |
 | 수량 | quantity | INT | NOT NULL |
-| 가격 | price | INT | NOT NULL |
+| 담을 당시 단가 | price | INT | NOT NULL |
 | 생성일시 | created_at | DATETIME | NOT NULL |
 | 수정일시 | updated_at | DATETIME | NOT NULL |
 
@@ -67,31 +60,34 @@
 | 한국어 | 영어 (컬럼명) | 타입 | NULL 여부 |
 |--------|--------------|------|-----------|
 | 주문 ID | order_id | BIGINT | NOT NULL (PK) |
-| 회원 ID | member_id | BIGINT | NOT NULL (FK → member) |
-| 딜 ID | deal_id | BIGINT | NULL |
+| 회원 ID | member_id | BIGINT | NOT NULL (FK → members) |
 | 주문 상태 | status | VARCHAR | NOT NULL |
 | 총 결제금액 | total_price | INT | NOT NULL |
 | 생성일시 | created_at | DATETIME | NOT NULL |
 | 수정일시 | updated_at | DATETIME | NOT NULL |
 
+> **status**: `PENDING`, `PAID`, `SHIPPED`, `DELIVERED`, `CANCELED`
+
 ---
 
-## OrderItem (order_item)
+## OrderItem (order_items)
 
 | 한국어 | 영어 (컬럼명) | 타입 | NULL 여부 |
 |--------|--------------|------|-----------|
 | 주문 항목 ID | order_item_id | BIGINT | NOT NULL (PK) |
 | 주문 ID | order_id | BIGINT | NOT NULL (FK → orders) |
-| 상품 ID | product_id | BIGINT | NOT NULL (FK → product) |
+| 상품 ID | product_id | BIGINT | NOT NULL (FK → products) |
 | 수량 | quantity | INT | NOT NULL |
-| 단가 | price | INT | NOT NULL |
+| 주문 당시 단가 | price | INT | NOT NULL |
 | 주문 금액 | order_price | INT | NOT NULL |
 | 생성일시 | created_at | DATETIME | NOT NULL |
 | 수정일시 | updated_at | DATETIME | NOT NULL |
 
+> **order_price** = price × quantity
+
 ---
 
-## Payment (payment)
+## Payment (payments)
 
 | 한국어 | 영어 (컬럼명) | 타입 | NULL 여부 |
 |--------|--------------|------|-----------|
@@ -104,20 +100,24 @@
 | 생성일시 | created_at | DATETIME | NOT NULL |
 | 수정일시 | updated_at | DATETIME | NOT NULL |
 
+> **status**: `PENDING`, `COMPLETED`, `FAILED`, `REFUNDED`
+> **method**: `CARD`, `CASH`, `TRANSFER`, `TOSS`
+
 ---
 
-## Review (review)
+## Review (reviews)
 
 | 한국어 | 영어 (컬럼명) | 타입 | NULL 여부 |
 |--------|--------------|------|-----------|
 | 리뷰 ID | review_id | BIGINT | NOT NULL (PK) |
-| 상품 ID | product_id | BIGINT | NOT NULL (FK → product) |
-| 회원 ID | member_id | BIGINT | NOT NULL (FK → member) |
+| 상품 ID | product_id | BIGINT | NOT NULL (FK → products) |
+| 회원 ID | member_id | BIGINT | NOT NULL (FK → members) |
 | 별점 | rating | INT | NOT NULL |
 | 내용 | content | VARCHAR(500) | NULL |
 | 생성일시 | created_at | DATETIME | NOT NULL |
 | 수정일시 | updated_at | DATETIME | NOT NULL |
-| 삭제일시 | deleted_at | DATETIME | NULL |
+
+> **rating**: 1 ~ 5
 
 ---
 
@@ -130,7 +130,6 @@
 | Member → Review | 1 : N |
 | Product → CartItem | 1 : N |
 | Product → OrderItem | 1 : N |
-| Product → Deal | 1 : N |
 | Product → Review | 1 : N |
 | Order → OrderItem | 1 : N |
 | Order → Payment | 1 : 1 |
