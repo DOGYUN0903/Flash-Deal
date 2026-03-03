@@ -23,9 +23,12 @@ import com.prj.flashdeal.domain.product.service.ProductService;
 import com.prj.flashdeal.global.response.ApiResponse;
 import com.prj.flashdeal.global.response.PageResponse;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 
+@Tag(name = "Admin - Product", description = "상품 관리 API (어드민)")
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/api/admin/products")
@@ -33,6 +36,7 @@ public class AdminProductController {
 
     private final ProductService productService;
 
+    @Operation(summary = "상품 등록", description = "새 상품을 등록합니다. 이미지 파일을 함께 업로드할 수 있습니다.")
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<ApiResponse<ProductResponse>> createProduct(
         @ModelAttribute @Valid ProductCreateRequest request
@@ -44,6 +48,7 @@ public class AdminProductController {
         );
     }
 
+    @Operation(summary = "상품 목록 검색 (어드민)", description = "전체 상품을 상태, 카테고리 등 조건으로 검색합니다. (페이징)")
     @GetMapping
     public ResponseEntity<ApiResponse<PageResponse<ProductSummaryResponse>>> searchProductsForAdmin(
         @ModelAttribute ProductSearchCondForAdmin cond,
@@ -56,6 +61,7 @@ public class AdminProductController {
         );
     }
 
+    @Operation(summary = "상품 상세 조회 (어드민)", description = "삭제된 상품을 포함한 상품 상세 정보를 조회합니다.")
     @GetMapping("/{productId}")
     public ResponseEntity<ApiResponse<ProductResponse>> getProductForAdmin(
         @PathVariable Long productId
@@ -67,6 +73,7 @@ public class AdminProductController {
         );
     }
 
+    @Operation(summary = "상품 수정", description = "상품 정보를 수정합니다. 이미지 파일을 교체할 수 있습니다.")
     @PatchMapping(value = "/{productId}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<ApiResponse<ProductResponse>> updateProduct(
         @PathVariable Long productId,
@@ -79,6 +86,7 @@ public class AdminProductController {
         );
     }
 
+    @Operation(summary = "상품 삭제", description = "상품을 소프트 딜리트 처리합니다.")
     @DeleteMapping("/{productId}")
     public ResponseEntity<ApiResponse<Void>> deleteProduct(
         @PathVariable Long productId

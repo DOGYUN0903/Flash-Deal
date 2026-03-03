@@ -12,6 +12,9 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
+
 import com.prj.flashdeal.domain.review.dto.request.ReviewRequest;
 import com.prj.flashdeal.domain.review.dto.response.ReviewResponse;
 import com.prj.flashdeal.domain.review.service.ReviewService;
@@ -22,6 +25,7 @@ import com.prj.flashdeal.global.security.CustomUserDetails;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 
+@Tag(name = "Review", description = "리뷰 API")
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/api/products/{productId}/reviews")
@@ -29,6 +33,7 @@ public class ReviewController {
 
     private final ReviewService reviewService;
 
+    @Operation(summary = "리뷰 작성", description = "구매한 상품에 대해 리뷰를 작성합니다. 구매 이력이 없거나 이미 리뷰를 작성한 경우 실패합니다.")
     @PostMapping
     public ResponseEntity<ApiResponse<ReviewResponse>> createReview(
         @PathVariable Long productId,
@@ -42,6 +47,7 @@ public class ReviewController {
         );
     }
 
+    @Operation(summary = "상품 리뷰 목록 조회", description = "특정 상품의 리뷰 목록을 조회합니다. (페이징)")
     @GetMapping
     public ResponseEntity<ApiResponse<PageResponse<ReviewResponse>>> getReviews(
         @PathVariable Long productId,

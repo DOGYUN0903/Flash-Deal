@@ -20,9 +20,12 @@ import com.prj.flashdeal.domain.cart.service.CartService;
 import com.prj.flashdeal.global.response.ApiResponse;
 import com.prj.flashdeal.global.security.CustomUserDetails;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 
+@Tag(name = "Cart", description = "장바구니 API")
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/api/carts")
@@ -30,6 +33,7 @@ public class CartController {
 
     private final CartService cartService;
 
+    @Operation(summary = "장바구니 담기", description = "상품을 장바구니에 추가합니다. 이미 담긴 상품이면 수량이 합산됩니다.")
     @PostMapping
     public ResponseEntity<ApiResponse<CartItemResponse>> addCartItem(
         @AuthenticationPrincipal CustomUserDetails userPrincipal,
@@ -42,6 +46,7 @@ public class CartController {
         );
     }
 
+    @Operation(summary = "장바구니 조회", description = "내 장바구니 목록과 총 금액을 조회합니다.")
     @GetMapping
     public ResponseEntity<ApiResponse<CartResponse>> getCartItems(
         @AuthenticationPrincipal CustomUserDetails userPrincipal) {
@@ -52,6 +57,7 @@ public class CartController {
         );
     }
 
+    @Operation(summary = "장바구니 수량 수정", description = "장바구니 항목의 수량을 변경합니다.")
     @PatchMapping("/{cartItemId}")
     public ResponseEntity<ApiResponse<CartItemResponse>> updateCartItemQuantity(
         @AuthenticationPrincipal CustomUserDetails userPrincipal,
@@ -65,6 +71,7 @@ public class CartController {
         );
     }
 
+    @Operation(summary = "장바구니 항목 삭제", description = "장바구니에서 특정 상품을 삭제합니다.")
     @DeleteMapping("/{cartItemId}")
     public ResponseEntity<ApiResponse<Void>> deleteCartItem(
         @AuthenticationPrincipal CustomUserDetails userPrincipal,
@@ -79,6 +86,7 @@ public class CartController {
         );
     }
 
+    @Operation(summary = "장바구니 전체 비우기", description = "장바구니를 전체 비웁니다.")
     @DeleteMapping
     public ResponseEntity<ApiResponse<Void>> clearCart(
         @AuthenticationPrincipal CustomUserDetails userPrincipal
