@@ -17,6 +17,7 @@ import com.prj.flashdeal.global.response.ApiResponse;
 import com.prj.flashdeal.global.response.PageResponse;
 
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 
@@ -32,6 +33,11 @@ public class AdminOrderController {
      * 전체 주문 목록 조회 (관리자) - 페이징
      */
     @Operation(summary = "전체 주문 목록 조회", description = "모든 회원의 주문 목록을 최신순으로 조회합니다. (페이징, 어드민 전용)")
+    @ApiResponses({
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "주문 목록 조회 성공"),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "인증 필요"),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "권한 없음")
+    })
     @GetMapping
     public ResponseEntity<ApiResponse<PageResponse<OrderSummaryResponse>>> getAllOrders(
         @PageableDefault(size = 10) Pageable pageable
@@ -47,6 +53,12 @@ public class AdminOrderController {
      * 주문 상세 조회 (관리자)
      */
     @Operation(summary = "주문 상세 조회", description = "주문 ID로 특정 주문의 상세 정보를 조회합니다. (어드민 전용)")
+    @ApiResponses({
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "주문 상세 조회 성공"),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "인증 필요"),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "권한 없음"),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "존재하지 않는 주문")
+    })
     @GetMapping("/{orderId}")
     public ResponseEntity<ApiResponse<OrderResponse>> getOrder(
         @PathVariable Long orderId
@@ -62,6 +74,13 @@ public class AdminOrderController {
      * 배송 시작 처리 (관리자)
      */
     @Operation(summary = "배송 시작 처리", description = "PAID 상태의 주문을 배송 중(SHIPPING) 상태로 변경합니다. (어드민 전용)")
+    @ApiResponses({
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "배송 시작 처리 성공"),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "잘못된 주문 상태"),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "인증 필요"),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "권한 없음"),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "존재하지 않는 주문")
+    })
     @PatchMapping("/{orderId}/ship")
     public ResponseEntity<ApiResponse<Void>> startShipping(
         @PathVariable Long orderId
@@ -78,6 +97,13 @@ public class AdminOrderController {
      * 배송 완료 처리 (관리자)
      */
     @Operation(summary = "배송 완료 처리", description = "SHIPPING 상태의 주문을 배송 완료(DELIVERED) 상태로 변경합니다. (어드민 전용)")
+    @ApiResponses({
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "배송 완료 처리 성공"),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "잘못된 주문 상태"),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "인증 필요"),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "권한 없음"),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "존재하지 않는 주문")
+    })
     @PatchMapping("/{orderId}/deliver")
     public ResponseEntity<ApiResponse<Void>> completeDelivery(
         @PathVariable Long orderId

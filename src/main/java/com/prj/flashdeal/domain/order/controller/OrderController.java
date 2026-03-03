@@ -22,6 +22,7 @@ import com.prj.flashdeal.global.response.PageResponse;
 import com.prj.flashdeal.global.security.CustomUserDetails;
 
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -38,6 +39,11 @@ public class OrderController {
      * 장바구니에서 주문 생성
      */
     @Operation(summary = "장바구니 주문", description = "장바구니에 담긴 상품을 주문합니다. 주문 후 장바구니는 자동으로 비워집니다.")
+    @ApiResponses({
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "주문 생성 성공"),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "장바구니가 비어있음"),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "인증 필요")
+    })
     @PostMapping("/from-cart")
     public ResponseEntity<ApiResponse<OrderResponse>> createOrderFromCart(
         @AuthenticationPrincipal CustomUserDetails userPrincipal
@@ -53,6 +59,12 @@ public class OrderController {
      * 바로 구매 (장바구니 거치지 않음)
      */
     @Operation(summary = "바로 구매", description = "장바구니 없이 특정 상품을 바로 주문합니다.")
+    @ApiResponses({
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "주문 생성 성공"),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "유효성 검사 실패 또는 재고 부족"),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "인증 필요"),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "존재하지 않는 상품")
+    })
     @PostMapping("/direct")
     public ResponseEntity<ApiResponse<OrderResponse>> createDirectOrder(
         @AuthenticationPrincipal CustomUserDetails userPrincipal,
@@ -69,6 +81,11 @@ public class OrderController {
      * 주문 단건 조회
      */
     @Operation(summary = "주문 단건 조회", description = "주문 ID로 주문 상세 정보를 조회합니다.")
+    @ApiResponses({
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "주문 조회 성공"),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "인증 필요"),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "존재하지 않는 주문")
+    })
     @GetMapping("/{orderId}")
     public ResponseEntity<ApiResponse<OrderResponse>> getOrder(
         @AuthenticationPrincipal CustomUserDetails userPrincipal,
@@ -85,6 +102,10 @@ public class OrderController {
      * 주문 목록 조회 - 페이징
      */
     @Operation(summary = "내 주문 목록", description = "내 주문 목록을 최신순으로 조회합니다. (페이징)")
+    @ApiResponses({
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "주문 목록 조회 성공"),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "인증 필요")
+    })
     @GetMapping
     public ResponseEntity<ApiResponse<PageResponse<OrderSummaryResponse>>> getOrders(
         @AuthenticationPrincipal CustomUserDetails userPrincipal,
@@ -101,6 +122,12 @@ public class OrderController {
      * 주문 취소
      */
     @Operation(summary = "주문 취소", description = "PENDING 상태의 주문을 취소합니다. 재고가 복구됩니다.")
+    @ApiResponses({
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "주문 취소 성공"),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "취소 불가능한 상태"),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "인증 필요"),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "존재하지 않는 주문")
+    })
     @DeleteMapping("/{orderId}")
     public ResponseEntity<ApiResponse<Void>> cancelOrder(
         @AuthenticationPrincipal CustomUserDetails userPrincipal,

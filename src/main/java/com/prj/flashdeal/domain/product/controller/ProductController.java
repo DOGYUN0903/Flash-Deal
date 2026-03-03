@@ -18,6 +18,7 @@ import com.prj.flashdeal.global.response.ApiResponse;
 import com.prj.flashdeal.global.response.PageResponse;
 
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 
@@ -30,6 +31,9 @@ public class ProductController {
     private final ProductService productService;
 
     @Operation(summary = "상품 목록 검색", description = "카테고리, 이름 등 조건으로 판매 중인 상품을 검색합니다. (페이징)")
+    @ApiResponses({
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "상품 목록 검색 성공")
+    })
     @GetMapping
     public ResponseEntity<ApiResponse<PageResponse<ProductSummaryResponse>>> searchProductsForUser(
         @ModelAttribute ProductSearchCondForUser cond,
@@ -43,6 +47,10 @@ public class ProductController {
     }
 
     @Operation(summary = "상품 상세 조회", description = "판매 중인 상품의 상세 정보를 조회합니다.")
+    @ApiResponses({
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "상품 상세 조회 성공"),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "존재하지 않는 상품")
+    })
     @GetMapping("/{productId}")
     public ResponseEntity<ApiResponse<ProductResponseForUser>> getProductForUser(
         @PathVariable Long productId

@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 
 import com.prj.flashdeal.domain.member.dto.request.MemberUpdateRequest;
@@ -36,6 +37,11 @@ public class MemberController {
      * 프로필 조회
      */
     @Operation(summary = "내 프로필 조회", description = "로그인한 회원의 프로필 정보를 조회합니다.")
+    @ApiResponses({
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "프로필 조회 성공"),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "인증 필요"),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "존재하지 않는 회원")
+    })
     @GetMapping("/me")
     public ResponseEntity<ApiResponse<MemberProfileResponse>> getMyProfile(
         @AuthenticationPrincipal CustomUserDetails userPrincipal
@@ -51,6 +57,11 @@ public class MemberController {
      * 회원 정보 수정
      */
     @Operation(summary = "프로필 수정", description = "이름과 전화번호를 수정합니다.")
+    @ApiResponses({
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "프로필 수정 성공"),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "유효성 검사 실패"),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "인증 필요")
+    })
     @PatchMapping("/me")
     public ResponseEntity<ApiResponse<MemberProfileResponse>> updateMemberInfo(
         @AuthenticationPrincipal CustomUserDetails userPrincipal,
@@ -67,6 +78,11 @@ public class MemberController {
      * 현재 비밀번호 확인
      */
     @Operation(summary = "비밀번호 확인", description = "현재 비밀번호가 올바른지 확인합니다.")
+    @ApiResponses({
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "비밀번호 확인 성공"),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "비밀번호 불일치"),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "인증 필요")
+    })
     @PostMapping("/me/verify-password")
     public ResponseEntity<ApiResponse<Void>> verifyPassword(
         @AuthenticationPrincipal CustomUserDetails userPrincipal,
@@ -80,6 +96,11 @@ public class MemberController {
      * 비밀번호 변경
      */
     @Operation(summary = "비밀번호 변경", description = "현재 비밀번호 확인 후 새 비밀번호로 변경합니다.")
+    @ApiResponses({
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "비밀번호 변경 성공"),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "현재 비밀번호 불일치 또는 유효성 검사 실패"),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "인증 필요")
+    })
     @PatchMapping("/me/password")
     public ResponseEntity<ApiResponse<Void>> changePassword(
         @AuthenticationPrincipal CustomUserDetails userPrincipal,

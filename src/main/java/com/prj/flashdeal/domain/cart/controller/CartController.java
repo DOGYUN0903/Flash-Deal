@@ -21,6 +21,7 @@ import com.prj.flashdeal.global.response.ApiResponse;
 import com.prj.flashdeal.global.security.CustomUserDetails;
 
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -34,6 +35,12 @@ public class CartController {
     private final CartService cartService;
 
     @Operation(summary = "장바구니 담기", description = "상품을 장바구니에 추가합니다. 이미 담긴 상품이면 수량이 합산됩니다.")
+    @ApiResponses({
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "장바구니 담기 성공"),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "유효성 검사 실패"),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "인증 필요"),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "존재하지 않는 상품")
+    })
     @PostMapping
     public ResponseEntity<ApiResponse<CartItemResponse>> addCartItem(
         @AuthenticationPrincipal CustomUserDetails userPrincipal,
@@ -47,6 +54,10 @@ public class CartController {
     }
 
     @Operation(summary = "장바구니 조회", description = "내 장바구니 목록과 총 금액을 조회합니다.")
+    @ApiResponses({
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "장바구니 조회 성공"),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "인증 필요")
+    })
     @GetMapping
     public ResponseEntity<ApiResponse<CartResponse>> getCartItems(
         @AuthenticationPrincipal CustomUserDetails userPrincipal) {
@@ -58,6 +69,13 @@ public class CartController {
     }
 
     @Operation(summary = "장바구니 수량 수정", description = "장바구니 항목의 수량을 변경합니다.")
+    @ApiResponses({
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "수량 수정 성공"),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "유효성 검사 실패"),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "인증 필요"),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "권한 없음"),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "존재하지 않는 장바구니 항목")
+    })
     @PatchMapping("/{cartItemId}")
     public ResponseEntity<ApiResponse<CartItemResponse>> updateCartItemQuantity(
         @AuthenticationPrincipal CustomUserDetails userPrincipal,
@@ -72,6 +90,12 @@ public class CartController {
     }
 
     @Operation(summary = "장바구니 항목 삭제", description = "장바구니에서 특정 상품을 삭제합니다.")
+    @ApiResponses({
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "삭제 성공"),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "인증 필요"),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "권한 없음"),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "존재하지 않는 장바구니 항목")
+    })
     @DeleteMapping("/{cartItemId}")
     public ResponseEntity<ApiResponse<Void>> deleteCartItem(
         @AuthenticationPrincipal CustomUserDetails userPrincipal,
@@ -87,6 +111,10 @@ public class CartController {
     }
 
     @Operation(summary = "장바구니 전체 비우기", description = "장바구니를 전체 비웁니다.")
+    @ApiResponses({
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "장바구니 비우기 성공"),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "인증 필요")
+    })
     @DeleteMapping
     public ResponseEntity<ApiResponse<Void>> clearCart(
         @AuthenticationPrincipal CustomUserDetails userPrincipal
