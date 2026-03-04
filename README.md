@@ -19,6 +19,7 @@
 - [📊 ERD](#-erd)
 - [💡 기술적 의사결정](#-기술적-의사결정)
 - [🏛️ 도메인 설계 원칙](#️-도메인-설계-원칙)
+- [🔧 트러블슈팅](#-트러블슈팅)
 
 ---
 
@@ -277,4 +278,159 @@ order.ship() / order.deliver()  // 배송 상태 전환 시 순서 검증 포함
 
 </details>
 
+---
+
+## 🔧 트러블슈팅
+
+<details>
+<summary><strong>🔴 "재고는 50개인데 주문이 100건?" — 동시 주문 시 과매도(Overselling) 해결</strong></summary>
+
+<br>
+
+**🚨 문제 발견**
+
+JMeter로 재고 50개짜리 상품에 100명이 동시에 `POST /api/orders/direct`를 호출하는 부하테스트를 진행했습니다.
+정상이라면 50건만 성공해야 하지만 **68건이 성공**했고, Grafana의 `product_stock_remaining` 게이지는 0이 아닌 **7에서 멈추는 현상**을 확인했습니다.
+
+| 구분 | 기대값 | 실제값 |
+|------|--------|--------|
+| 주문 성공 건수 | 최대 50건 | **68건** |
+| 최종 재고 | 0개 | **7개** |
+| 과매도 수량 | 0건 | **25건** (68 - 43) |
+
+![Grafana 재고 미감소](images/troubleshooting/grafana-result.png)
+![JMeter 68건 성공](images/troubleshooting/jmeter-result.png)
+
+추가로 100건 중 **32건이 500 에러**로 실패했습니다. 서버 로그를 확인하니 아래 예외가 반복 발생하고 있었습니다.
+
+```
+Caused by: org.hibernate.exception.LockAcquisitionException: could not execute statement
+  [Deadlock found when trying to get lock; try restarting transaction]
+  [update products set category=?,description=?,image_url=?,is_deleted=?,name=?,
+   price=?,status=?,stock_quantity=?,updated_at=? where product_id=?]
+```
+
+![데드락 서버 로그](images/troubleshooting/dead-lock.png)
+
+이는 과매도와 함께 **락 미적용이 낳은 또 다른 증상**입니다.
+
+**🔍 원인 분석 — Lost Update + MySQL 데드락**
+
+```java
+// 락 없는 상태 — 일반 SELECT 후 엔티티에서 재고 감소
+Product product = productService.findCartableProduct(productId); // 락 없는 SELECT
+product.decreaseStock(quantity); // 메모리 값 기준으로 차감 후 UPDATE
+```
+
+```
+초기 재고: 50개, 동시 요청: 100건
+
+Thread  1: SELECT stock = 50 ┐
+Thread  2: SELECT stock = 50 │ 모든 스레드가 동시에
+Thread  3: SELECT stock = 50 │ 같은 값(50)을 읽음
+   ...                        │
+Thread 68: SELECT stock = 50 ┘
+
+Thread  1: UPDATE stock = 49  ┐
+Thread  2: UPDATE stock = 49  │ 각자 50-1=49를 계산해
+Thread  3: UPDATE stock = 49  │ 서로의 변경을 덮어씀 (Lost Update)
+   ...                        │
+Thread 68: UPDATE stock = 49  ┘
+
+결과: 주문 68건 성공, 재고 7개 → 25건 과매도
+```
+
+`decreaseStock()`에 `stock < quantity` 가드가 있어 음수는 발생하지 않습니다.
+진짜 문제는 **여러 트랜잭션이 서로의 업데이트를 덮어써 재고가 제대로 줄지 않는 것**입니다.
+
+**🔍 원인 분석 — MySQL 데드락 (500 에러)**
+
+`order_items`가 `products`에 FK를 가지므로, INSERT 시 MySQL이 부모 행(`products`)에 **공유 락(S-Lock)** 을 획득합니다.
+동시에 `UPDATE products SET stock_quantity = ?`는 동일 행에 **배타 락(X-Lock)** 을 요구합니다.
+두 트랜잭션이 서로의 S-Lock을 기다리며 X-Lock을 획득하지 못하는 순환 대기가 발생합니다.
+
+```
+TX-A: order_items INSERT → products 행에 S-Lock 획득
+TX-B: order_items INSERT → products 행에 S-Lock 획득
+
+TX-A: products UPDATE → X-Lock 필요, TX-B의 S-Lock 대기 중
+TX-B: products UPDATE → X-Lock 필요, TX-A의 S-Lock 대기 중
+
+→ Deadlock! MySQL이 한 쪽을 Victim으로 롤백
+```
+
+`LockAcquisitionException`은 `CustomException`을 상속하지 않아 `GlobalExceptionHandler`의 `@ExceptionHandler(Exception.class)`에 걸려 **500**으로 응답됩니다.
+비관적 락(`SELECT FOR UPDATE`)을 적용하면 한 트랜잭션이 X-Lock을 선점하여 다른 트랜잭션이 대기하므로, 이 순환 대기 자체가 발생하지 않습니다.
+
+**⚖️ 해결 방법 비교**
+
+| 방법 | 동작 방식 | 장점 | 단점 |
+|------|----------|------|------|
+| **낙관적 락** (`@Version`) | 커밋 시 버전 충돌 감지 → 예외 | DB 락 없음, 충돌 없을 때 성능 우수 | 고경합 시 `OptimisticLockException` 폭증 → 재시도 폭풍, 실패율 급등 |
+| **비관적 락** (`SELECT FOR UPDATE`) | 조회 시점에 행 락 점유 → 직렬화 | 정합성 확실, 구현 단순 | 처리량 한계, 락 대기로 응답 지연 |
+| **Redis 분산 락** (Redisson) | Redis 기반 외부 락 | DB 독립적, 분산 환경에 유리 | 단일 서버에서 공유 메모리 사용 가능한데 Redis 인프라까지 추가하는 건 오버엔지니어링 → 배제 |
+
+**🧪 낙관적 락 적용 및 테스트**
+
+`@Version` 필드만 추가하고 동일한 동시 주문 테스트(재고 50개, 100명 동시 요청)를 실행했습니다.
+
+```java
+// Product 엔티티 — 낙관적 락
+@Version
+private Long version;
+
+// 커밋 시 Hibernate가 자동으로 아래 쿼리 실행
+// UPDATE products SET stock_quantity=?, version=? WHERE product_id=? AND version=?
+// → 다른 트랜잭션이 먼저 커밋했다면 version 불일치 → ObjectOptimisticLockingFailureException
+```
+
+서버 로그에는 아래 예외가 반복 발생했습니다.
+
+```
+Caused by: org.hibernate.exception.LockAcquisitionException: could not execute statement
+  [Deadlock found when trying to get lock; try restarting transaction]
+  [update products set ...,version=? where product_id=? and version=?]
+```
+
+![낙관적 락 Grafana](images/troubleshooting/낙관락-grafana.png)
+![낙관적 락 JMeter](images/troubleshooting/낙관락-jmeter.png)
+
+낙관적 락은 `UPDATE ... WHERE version=?` 조건으로 버전 충돌을 감지하지만, **데드락 자체를 막지는 못합니다.**
+`order_items INSERT`의 FK S-Lock과 `products UPDATE`의 X-Lock이 여전히 순환 대기를 일으킵니다.
+충돌이 발생할 때마다 예외가 throw되고, 재시도 로직 없이는 대부분 요청이 실패합니다.
+재시도를 추가해도 고경합 환경에서는 재시도 요청이 연쇄 폭증해 오히려 서버 부하가 커집니다.
+**동시 주문이 잦은 선착순 환경에서는 낙관적 락이 부적합**하다고 판단했습니다.
+
+**✅ 채택 — 비관적 락 (Pessimistic Lock)**
+
+낙관적 락의 실패를 직접 확인한 뒤, `SELECT ... FOR UPDATE`로 전환했습니다.
+
+```java
+// ProductRepository — SELECT FOR UPDATE 쿼리 추가
+@Lock(LockModeType.PESSIMISTIC_WRITE)
+@Query("SELECT p FROM Product p WHERE p.id = :productId")
+Optional<Product> findByIdWithLock(@Param("productId") Long productId);
+
+// ProductService.findCartableProduct() — SELECT FOR UPDATE로 변경
+// 엔티티의 첫 번째 접근을 락 쿼리로 만들어 Hibernate 1차 캐시 stale 문제 방지
+@Transactional
+public Product findCartableProduct(Long productId) {
+    Product product = productRepository.findByIdWithLock(productId)
+            .orElseThrow(...);  // SELECT ... FOR UPDATE → 다른 트랜잭션 대기
+    ...
+    return product;
+}
+
+// OrderService.createDirectOrder() — 락이 걸린 엔티티에서 직접 재고 감소
+Product product = productService.findCartableProduct(request.getProductId());
+product.decreaseStock(request.getQuantity()); // 엔티티가 자신의 재고를 직접 관리
+```
+
+한 트랜잭션이 락을 점유하는 동안 다른 트랜잭션은 대기하므로, 항상 최신 재고를 기준으로 차감됩니다.
+재고 50개에 100건 요청 시 정확히 50건만 성공하고, Grafana 게이지가 50 → 0으로 정확히 감소합니다.
+
+![비관적 락 Grafana](images/troubleshooting/비관락-grafana.png)
+![비관적 락 JMeter](images/troubleshooting/비관락-jmeter.png)
+
+</details>
 
