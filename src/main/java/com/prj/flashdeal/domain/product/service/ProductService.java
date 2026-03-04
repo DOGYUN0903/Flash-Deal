@@ -2,6 +2,7 @@ package com.prj.flashdeal.domain.product.service;
 
 import com.prj.flashdeal.domain.file.service.FileService;
 import com.prj.flashdeal.domain.product.entity.ProductStatus;
+import com.prj.flashdeal.domain.product.metrics.ProductMetrics;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -29,6 +30,7 @@ public class ProductService {
 
     private final ProductRepository productRepository;
     private final FileService fileService;
+    private final ProductMetrics productMetrics;
 
     @Value("${ncp.object-storage.default-image-url}")
     private String defaultImageUrl;
@@ -123,6 +125,7 @@ public class ProductService {
      */
     @Transactional
     public void decreaseStock(Long productId, int quantity) {
+        productMetrics.registerStockGauge(productId);
         Product product = getProduct(productId);
         product.removeStock(quantity);
     }
@@ -151,4 +154,5 @@ public class ProductService {
 
         return product;
     }
+
 }
