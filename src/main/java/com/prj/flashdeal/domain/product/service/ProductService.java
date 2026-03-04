@@ -132,18 +132,6 @@ public class ProductService {
 
     /**
      * 재고 복구 (주문 취소용)
-     * @deprecated 주문 생성 시 재고 감소는 findCartableProduct()로 받은 엔티티에서 직접 decreaseStock() 호출
-     */
-    @Transactional
-    public void decreaseStock(Long productId, int quantity) {
-        productMetrics.registerStockGauge(productId);
-        Product product = productRepository.findByIdWithLock(productId)
-            .orElseThrow(() -> new ProductException(ProductErrorCode.PRODUCT_NOT_FOUND));
-        product.decreaseStock(quantity);
-    }
-
-    /**
-     * 재고 복구 (주문 취소용)
      */
     @Transactional
     public void increaseStock(Long productId, int quantity) {

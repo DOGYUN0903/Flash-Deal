@@ -52,10 +52,9 @@ public class OrderService {
 
         // 장바구니 항목 → 주문 항목 변환 및 재고 감소
         for (CartItem cartItem : cartItems) {
-            Product product = cartItem.getProduct();
-
-            // 재고 감소 (ProductService 사용)
-            productService.decreaseStock(product.getId(), cartItem.getQuantity());
+            // SELECT FOR UPDATE로 최신 재고 조회 및 락 선점 후 엔티티에서 직접 감소
+            Product product = productService.findCartableProduct(cartItem.getProduct().getId());
+            product.decreaseStock(cartItem.getQuantity());
 
             // 주문 항목 생성
             OrderItem orderItem = OrderItem.createOrderItem(product, cartItem.getQuantity());
