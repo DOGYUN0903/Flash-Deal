@@ -12,7 +12,6 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
-import jakarta.persistence.Version;
 
 import lombok.AccessLevel;
 import lombok.Builder;
@@ -29,9 +28,6 @@ public class Product extends BaseEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "product_id")
     private Long id;
-
-    @Version
-    private Long version;
 
     @Column(nullable = false)
     private String name; // 상품 이름
