@@ -3,11 +3,13 @@ package com.prj.flashdeal.domain.product.dto.request;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 import org.springframework.web.multipart.MultipartFile;
 
 @Schema(description = "상품 수정 요청")
 @Getter
+@Setter
 @NoArgsConstructor
 public class ProductUpdateRequest {
 

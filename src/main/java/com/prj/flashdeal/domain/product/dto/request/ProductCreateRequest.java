@@ -9,11 +9,13 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 import org.springframework.web.multipart.MultipartFile;
 
 @Schema(description = "상품 등록 요청")
 @Getter
+@Setter
 @NoArgsConstructor
 public class ProductCreateRequest {
 
