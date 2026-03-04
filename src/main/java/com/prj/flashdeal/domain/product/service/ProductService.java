@@ -126,7 +126,8 @@ public class ProductService {
     @Transactional
     public void decreaseStock(Long productId, int quantity) {
         productMetrics.registerStockGauge(productId);
-        Product product = getProduct(productId);
+        Product product = productRepository.findByIdWithLock(productId)
+            .orElseThrow(() -> new ProductException(ProductErrorCode.PRODUCT_NOT_FOUND));
         product.removeStock(quantity);
     }
 
