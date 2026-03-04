@@ -46,6 +46,8 @@ public class Payment extends BaseTimeEntity {
     @Column(nullable = false)
     private Integer amount;
 
+    private String tossPaymentKey;
+
     private LocalDateTime paidAt;
 
     @Builder
@@ -61,11 +63,21 @@ public class Payment extends BaseTimeEntity {
         this.paidAt = LocalDateTime.now();
     }
 
+    public void completePayment(PaymentMethod method, String tossPaymentKey) {
+        this.status = PaymentStatus.COMPLETED;
+        this.method = method;
+        this.tossPaymentKey = tossPaymentKey;
+        this.paidAt = LocalDateTime.now();
+    }
+
     public void failPayment() {
         this.status = PaymentStatus.FAILED;
     }
 
     public void refund() {
+        if (this.status != PaymentStatus.COMPLETED) {
+            throw new PaymentException(PaymentErrorCode.INVALID_PAYMENT_STATUS);
+        }
         this.status = PaymentStatus.REFUNDED;
     }
 }

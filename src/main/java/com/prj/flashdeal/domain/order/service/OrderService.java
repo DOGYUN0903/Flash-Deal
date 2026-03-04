@@ -5,6 +5,7 @@ import java.util.List;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.prj.flashdeal.domain.cart.entity.CartItem;
@@ -115,6 +116,15 @@ public class OrderService {
 
         Page<OrderSummaryResponse> responsePage = orderRepository.findOrderSummariesByMember(member, pageable);
         return new PageResponse<>(responsePage);
+    }
+
+    /**
+     * 결제 실패 시 보상 트랜잭션 — REQUIRES_NEW로 외부 TX와 독립적으로 커밋.
+     * confirmTossPayment()의 @Transactional이 롤백되어도 주문 취소 + 재고 복구는 유지된다.
+     */
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void cancelOrderOnPaymentFailure(Long memberId, Long orderId) {
+        cancelOrder(memberId, orderId);
     }
 
     /**
