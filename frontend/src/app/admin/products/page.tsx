@@ -32,7 +32,17 @@ const STATUS_LABEL: Record<string, { label: string; variant: "default" | "second
   SOLD_OUT:  { label: "품절",       variant: "destructive" },
 };
 
-const EMPTY_FORM = { name: "", description: "", price: "", stock: "" };
+const CATEGORY_OPTIONS = [
+  { value: "ELECTRONICS", label: "전자기기" },
+  { value: "FASHION",     label: "패션" },
+  { value: "FOOD",        label: "식품" },
+  { value: "SPORTS",      label: "스포츠" },
+  { value: "BEAUTY",      label: "뷰티" },
+  { value: "FURNITURE",   label: "가구" },
+  { value: "BOOKS",       label: "도서" },
+];
+
+const EMPTY_FORM = { name: "", description: "", price: "", stock: "", category: "" };
 
 function ImagePicker({
   existingUrl,
@@ -113,6 +123,7 @@ export default function AdminProductsPage() {
           description: createForm.description,
           price: Number(createForm.price),
           stock: Number(createForm.stock),
+          category: createForm.category,
         },
         createImage
       );
@@ -138,6 +149,7 @@ export default function AdminProductsPage() {
         description: res.data.description,
         price: String(res.data.price),
         stock: String(res.data.stockQuantity),
+        category: res.data.category ?? "",
       });
       setEditImage(null);
     } catch {
@@ -291,6 +303,20 @@ export default function AdminProductsPage() {
                 <Input type="number" min={0} value={createForm.stock} onChange={(e) => setCreateForm({ ...createForm, stock: e.target.value })} required />
               </div>
             </div>
+            <div className="space-y-2">
+              <Label>카테고리</Label>
+              <select
+                className="w-full border rounded-md px-3 py-2 text-sm"
+                value={createForm.category}
+                onChange={(e) => setCreateForm({ ...createForm, category: e.target.value })}
+                required
+              >
+                <option value="">카테고리 선택</option>
+                {CATEGORY_OPTIONS.map((c) => (
+                  <option key={c.value} value={c.value}>{c.label}</option>
+                ))}
+              </select>
+            </div>
             <DialogFooter>
               <Button type="button" variant="ghost" onClick={() => setCreateOpen(false)}>취소</Button>
               <Button type="submit" disabled={creating}>{creating ? "등록 중..." : "등록"}</Button>
@@ -324,6 +350,20 @@ export default function AdminProductsPage() {
                 <Label>재고</Label>
                 <Input type="number" min={0} value={editForm.stock} onChange={(e) => setEditForm({ ...editForm, stock: e.target.value })} required />
               </div>
+            </div>
+            <div className="space-y-2">
+              <Label>카테고리</Label>
+              <select
+                className="w-full border rounded-md px-3 py-2 text-sm"
+                value={editForm.category}
+                onChange={(e) => setEditForm({ ...editForm, category: e.target.value })}
+                required
+              >
+                <option value="">카테고리 선택</option>
+                {CATEGORY_OPTIONS.map((c) => (
+                  <option key={c.value} value={c.value}>{c.label}</option>
+                ))}
+              </select>
             </div>
             <DialogFooter>
               <Button type="button" variant="ghost" onClick={() => setEditTarget(null)}>취소</Button>

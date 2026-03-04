@@ -17,6 +17,7 @@ export interface AdminProductDetail {
   price: number;
   stockQuantity: number;
   status: string;
+  category: string;
   imageUrl: string | null;
 }
 
@@ -25,6 +26,7 @@ export interface ProductCreateBody {
   description: string;
   price: number;
   stock: number;
+  category: string;
 }
 
 export interface ProductUpdateBody {
@@ -32,6 +34,7 @@ export interface ProductUpdateBody {
   description?: string;
   price?: number;
   stock?: number;
+  category?: string;
 }
 
 export interface DealCreateBody {
@@ -69,7 +72,11 @@ async function multipartRequest<T>(
   image?: File | null
 ): Promise<T> {
   const formData = new FormData();
-  formData.append("data", new Blob([JSON.stringify(data)], { type: "application/json" }));
+  Object.entries(data).forEach(([key, value]) => {
+    if (value !== undefined && value !== null && value !== "") {
+      formData.append(key, String(value));
+    }
+  });
   if (image) formData.append("image", image);
 
   const res = await fetch(url, { method, credentials: "include", body: formData });
