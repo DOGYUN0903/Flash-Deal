@@ -5,6 +5,8 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import org.springframework.stereotype.Component;
 
+import jakarta.annotation.PostConstruct;
+
 import com.prj.flashdeal.domain.product.repository.ProductRepository;
 
 import io.micrometer.core.instrument.Gauge;
@@ -27,6 +29,12 @@ public class ProductMetrics {
      * [락 없음] 30스레드 동시 요청 시 재고가 0이 아닌 25~29에서 멈춤 → 과매도 시각화
      * [비관적 락] 재고가 정확히 선형 감소 → 정합성 보장 시각화
      */
+    @PostConstruct
+    public void initGauges() {
+        productRepository.findAll()
+            .forEach(p -> registerStockGauge(p.getId()));
+    }
+
     public void registerStockGauge(Long productId) {
         if (registered.add(productId)) {
             Gauge.builder("product.stock.remaining", productRepository,
