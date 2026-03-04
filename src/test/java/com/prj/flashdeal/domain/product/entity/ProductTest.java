@@ -71,7 +71,7 @@ class ProductTest {
     void validateVisibleToUser_Success_SoldOut() {
         // given
         Product product = createProduct(1);
-        product.removeStock(1); // stockQuantity=0 → SOLD_OUT
+        product.decreaseStock(1); // stockQuantity=0 → SOLD_OUT
 
         // when & then
         assertThatCode(() -> product.validateVisibleToUser())
@@ -109,7 +109,7 @@ class ProductTest {
     void addStock_Success_SoldOutToOnSale() {
         // given
         Product product = createProduct(1);
-        product.removeStock(1); // SOLD_OUT
+        product.decreaseStock(1); // SOLD_OUT
         assertThat(product.getStatus()).isEqualTo(ProductStatus.SOLD_OUT);
 
         // when
@@ -156,16 +156,16 @@ class ProductTest {
             .isInstanceOf(ProductException.class);
     }
 
-    // ========== removeStock ==========
+    // ========== decreaseStock ==========
 
     @Test
-    @DisplayName("removeStock 성공 - 재고 감소")
-    void removeStock_Success() {
+    @DisplayName("decreaseStock 성공 - 재고 감소")
+    void decreaseStock_Success() {
         // given
         Product product = createProduct(10);
 
         // when
-        product.removeStock(3);
+        product.decreaseStock(3);
 
         // then
         assertThat(product.getStockQuantity()).isEqualTo(7);
@@ -173,13 +173,13 @@ class ProductTest {
     }
 
     @Test
-    @DisplayName("removeStock 성공 - 재고가 0이 되면 SOLD_OUT으로 변경")
-    void removeStock_Success_StockZeroToSoldOut() {
+    @DisplayName("decreaseStock 성공 - 재고가 0이 되면 SOLD_OUT으로 변경")
+    void decreaseStock_Success_StockZeroToSoldOut() {
         // given
         Product product = createProduct(5);
 
         // when
-        product.removeStock(5);
+        product.decreaseStock(5);
 
         // then
         assertThat(product.getStockQuantity()).isEqualTo(0);
@@ -187,35 +187,35 @@ class ProductTest {
     }
 
     @Test
-    @DisplayName("removeStock 실패 - 재고보다 많은 수량 차감 시 예외 발생")
-    void removeStock_Fail_InsufficientStock() {
+    @DisplayName("decreaseStock 실패 - 재고보다 많은 수량 차감 시 예외 발생")
+    void decreaseStock_Fail_InsufficientStock() {
         // given
         Product product = createProduct(5);
 
         // when & then
-        assertThatThrownBy(() -> product.removeStock(10))
+        assertThatThrownBy(() -> product.decreaseStock(10))
             .isInstanceOf(ProductException.class);
     }
 
     @Test
-    @DisplayName("removeStock 실패 - 수량이 0이면 예외 발생")
-    void removeStock_Fail_ZeroQuantity() {
+    @DisplayName("decreaseStock 실패 - 수량이 0이면 예외 발생")
+    void decreaseStock_Fail_ZeroQuantity() {
         // given
         Product product = createProduct(10);
 
         // when & then
-        assertThatThrownBy(() -> product.removeStock(0))
+        assertThatThrownBy(() -> product.decreaseStock(0))
             .isInstanceOf(ProductException.class);
     }
 
     @Test
-    @DisplayName("removeStock 실패 - 수량이 음수이면 예외 발생")
-    void removeStock_Fail_NegativeQuantity() {
+    @DisplayName("decreaseStock 실패 - 수량이 음수이면 예외 발생")
+    void decreaseStock_Fail_NegativeQuantity() {
         // given
         Product product = createProduct(10);
 
         // when & then
-        assertThatThrownBy(() -> product.removeStock(-1))
+        assertThatThrownBy(() -> product.decreaseStock(-1))
             .isInstanceOf(ProductException.class);
     }
 

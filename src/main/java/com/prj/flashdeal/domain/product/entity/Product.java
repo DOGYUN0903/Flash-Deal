@@ -88,7 +88,7 @@ public class Product extends BaseEntity {
         }
     }
 
-    public void removeStock(Integer quantity) {
+    public void decreaseStock(Integer quantity) {
         if (quantity <= 0) {
             throw new ProductException(ProductErrorCode.INVALID_STOCK_QUANTITY);
         }

@@ -78,14 +78,13 @@ public class OrderService {
     public OrderResponse createDirectOrder(Long memberId, OrderCreateRequest request) {
         Member member = memberService.getMember(memberId);
 
-        // 상품 조회 및 검증
+        // findCartableProduct()가 SELECT FOR UPDATE로 엔티티를 로드 → 재고 감소는 엔티티에서 직접 수행.
+        // 이 방식으로 Hibernate 1차 캐시 stale 문제 방지 + DB 조회 1회로 최소화.
         Product product = productService.findCartableProduct(request.getProductId());
+        product.decreaseStock(request.getQuantity());
 
         // 주문 생성
         Order order = Order.createOrder(member);
-
-        // 재고 감소
-        productService.decreaseStock(product.getId(), request.getQuantity());
 
         // 주문 항목 생성
         OrderItem orderItem = OrderItem.createOrderItem(product, request.getQuantity());

@@ -109,10 +109,20 @@ public class ProductService {
         return getProduct(productId);
     }
 
-    @Transactional(readOnly = true)
+    /**
+     * 주문 가능한 상품 조회 — SELECT FOR UPDATE로 락을 선점한 뒤 엔티티 반환.
+     * 호출 측에서 product.decreaseStock()을 직접 호출하여 재고를 감소시킨다.
+     * 이 메서드가 트랜잭션 내 Product의 첫 번째 접근이어야 Hibernate 1차 캐시 문제를 방지할 수 있다.
+     */
+    @Transactional
     public Product findCartableProduct(Long productId) {
-        Product product = getProduct(productId);
+        productMetrics.registerStockGauge(productId);
+        Product product = productRepository.findByIdWithLock(productId)
+            .orElseThrow(() -> new ProductException(ProductErrorCode.PRODUCT_NOT_FOUND));
 
+        if (product.getIsDeleted()) {
+            throw new ProductException(ProductErrorCode.ALREADY_DELETED_PRODUCT);
+        }
         if (product.getStatus() != ProductStatus.ON_SALE) {
             throw new ProductException(ProductErrorCode.PRODUCT_NOT_ON_SALE);
         }
@@ -121,14 +131,15 @@ public class ProductService {
     }
 
     /**
-     * 재고 감소 (주문 생성용)
+     * 재고 복구 (주문 취소용)
+     * @deprecated 주문 생성 시 재고 감소는 findCartableProduct()로 받은 엔티티에서 직접 decreaseStock() 호출
      */
     @Transactional
     public void decreaseStock(Long productId, int quantity) {
         productMetrics.registerStockGauge(productId);
         Product product = productRepository.findByIdWithLock(productId)
             .orElseThrow(() -> new ProductException(ProductErrorCode.PRODUCT_NOT_FOUND));
-        product.removeStock(quantity);
+        product.decreaseStock(quantity);
     }
 
     /**
