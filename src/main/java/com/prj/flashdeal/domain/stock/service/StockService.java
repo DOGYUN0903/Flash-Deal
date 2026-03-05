@@ -51,7 +51,7 @@ public class StockService {
      */
     @Transactional
     public void increaseStock(Long productId, int quantity) {
-        Stock stock = stockRepository.findByProduct_Id(productId)
+        Stock stock = stockRepository.findByProductId(productId)
             .orElseThrow(() -> new StockException(StockErrorCode.STOCK_NOT_FOUND));
 
         stock.increase(quantity);
@@ -63,7 +63,7 @@ public class StockService {
      */
     @Transactional(readOnly = true)
     public int getStock(Long productId) {
-        return stockRepository.findByProduct_Id(productId)
+        return stockRepository.findByProductId(productId)
             .map(Stock::getQuantity)
             .orElse(0);
     }
