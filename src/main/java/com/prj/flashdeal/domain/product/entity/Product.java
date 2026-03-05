@@ -38,9 +38,6 @@ public class Product extends BaseEntity {
     @Column(nullable = false)
     private Integer price;
 
-    @Column(nullable = false)
-    private Integer stockQuantity; // 상품 재고
-
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private ProductStatus status; // 상품 상태(판매 준비중, 판매중, 품절)
@@ -52,21 +49,12 @@ public class Product extends BaseEntity {
     @Column(nullable = false)
     private ProductCategory category;
 
-    @Override
-    public void delete() {
-        if (this.stockQuantity > 0) {
-            throw new ProductException(ProductErrorCode.STOCK_REMAINS);
-        }
-        super.delete();
-    }
-
     @Builder
-    private Product(String name, String description, Integer price, Integer stock, ProductCategory category, String imageUrl) {
+    private Product(String name, String description, Integer price, ProductCategory category, String imageUrl) {
         this.name = name;
         this.description = description;
         this.price = price;
-        this.stockQuantity = stock != null ? stock : 0;
-        this.status = (this.stockQuantity > 0) ? ProductStatus.ON_SALE : ProductStatus.PREPARING;
+        this.status = ProductStatus.PREPARING; // 재고는 Stock 도메인에서 관리
         this.category = category;
         this.imageUrl = imageUrl;
     }
@@ -77,48 +65,23 @@ public class Product extends BaseEntity {
         }
     }
 
-    public void addStock(Integer quantity) {
-        if (quantity <= 0) {
-            throw new ProductException(ProductErrorCode.INVALID_STOCK_QUANTITY);
-        }
-        this.stockQuantity += quantity;
+    /**
+     * 재고가 0이 되었을 때 호출 — StockService에서 호출
+     */
+    public void markSoldOut() {
+        this.status = ProductStatus.SOLD_OUT;
+    }
 
-        if (this.status == ProductStatus.PREPARING || this.status == ProductStatus.SOLD_OUT) {
+    /**
+     * 재고가 다시 생겼을 때 호출 — StockService에서 호출
+     */
+    public void markOnSale() {
+        if (this.status != ProductStatus.ON_SALE) {
             this.status = ProductStatus.ON_SALE;
         }
     }
 
-    public void decreaseStock(Integer quantity) {
-        if (quantity <= 0) {
-            throw new ProductException(ProductErrorCode.INVALID_STOCK_QUANTITY);
-        }
-        if (this.stockQuantity < quantity) {
-            throw new ProductException(ProductErrorCode.INVALID_STOCK_QUANTITY);
-        }
-        this.stockQuantity -= quantity;
-
-        if (this.stockQuantity == 0) {
-            this.status = ProductStatus.SOLD_OUT;
-        }
-    }
-
-    public void updateStock(Integer stock) {
-        if (stock < 0) {
-            throw new ProductException(ProductErrorCode.INVALID_STOCK_QUANTITY);
-        }
-        this.stockQuantity = stock;
-        if (stock == 0) {
-            this.status = ProductStatus.SOLD_OUT;
-        } else {
-            this.status = ProductStatus.ON_SALE;
-        }
-    }
-
-    public void updateImageUrl(String imageUrl) {
-        this.imageUrl = imageUrl;
-    }
-
-    public void updateInfo(String name, String description, Integer price, Integer stock, String imageUrl) {
+    public void updateInfo(String name, String description, Integer price, String imageUrl) {
         if (name != null) {
             if (name.isBlank()) {
                 throw new ProductException(ProductErrorCode.BLANK_PRODUCT_NAME);
@@ -133,13 +96,6 @@ public class Product extends BaseEntity {
                 throw new ProductException(ProductErrorCode.INVALID_PRICE);
             }
             this.price = price;
-        }
-        if (stock != null) {
-            if (stock < 0) {
-                throw new ProductException(ProductErrorCode.INVALID_STOCK_QUANTITY);
-            }
-            this.stockQuantity = stock;
-            this.status = (stock == 0) ? ProductStatus.SOLD_OUT : ProductStatus.ON_SALE;
         }
         if (imageUrl != null) {
             this.imageUrl = imageUrl;

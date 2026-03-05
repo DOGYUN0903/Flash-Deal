@@ -2,6 +2,7 @@ package com.prj.flashdeal.domain.product.repository.impl;
 
 import static com.prj.flashdeal.domain.product.entity.QProduct.*;
 import static com.prj.flashdeal.domain.review.entity.QReview.*;
+import static com.prj.flashdeal.domain.stock.entity.QStock.*;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
@@ -34,13 +35,12 @@ public class ProductRepositoryCustomImpl implements ProductRepositoryCustom {
 
     @Override
     public Page<ProductSummaryResponse> searchProductsForAdmin(ProductSearchCondForAdmin cond, Pageable pageable) {
-
         List<ProductSummaryResponse> content = queryFactory
             .select(Projections.constructor(ProductSummaryResponse.class,
                 product.id,
                 product.name,
                 product.price,
-                product.stockQuantity,
+                stock.quantity.coalesce(0),
                 product.status,
                 product.imageUrl,
                 product.category,
@@ -48,6 +48,7 @@ public class ProductRepositoryCustomImpl implements ProductRepositoryCustom {
                 review.rating.avg()))
             .from(product)
             .leftJoin(review).on(review.product.id.eq(product.id))
+            .leftJoin(stock).on(stock.product.id.eq(product.id))
             .where(
                 productNameContains(cond.getProductName()),
                 priceGoe(cond.getMinPrice()),
@@ -83,13 +84,12 @@ public class ProductRepositoryCustomImpl implements ProductRepositoryCustom {
 
     @Override
     public Page<ProductSummaryResponse> searchProductsForUser(ProductSearchCondForUser cond, Pageable pageable) {
-
         List<ProductSummaryResponse> content = queryFactory
             .select(Projections.constructor(ProductSummaryResponse.class,
                 product.id,
                 product.name,
                 product.price,
-                product.stockQuantity,
+                stock.quantity.coalesce(0),
                 product.status,
                 product.imageUrl,
                 product.category,
@@ -97,6 +97,7 @@ public class ProductRepositoryCustomImpl implements ProductRepositoryCustom {
                 review.rating.avg()))
             .from(product)
             .leftJoin(review).on(review.product.id.eq(product.id))
+            .leftJoin(stock).on(stock.product.id.eq(product.id))
             .where(
                 product.isDeleted.isFalse(),
                 cond.isExcludeSoldOut()

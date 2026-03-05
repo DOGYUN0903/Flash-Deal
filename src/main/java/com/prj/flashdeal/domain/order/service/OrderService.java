@@ -22,6 +22,7 @@ import com.prj.flashdeal.domain.order.exception.OrderException;
 import com.prj.flashdeal.domain.order.repository.OrderRepository;
 import com.prj.flashdeal.domain.product.entity.Product;
 import com.prj.flashdeal.domain.product.service.ProductService;
+import com.prj.flashdeal.domain.stock.service.StockService;
 import com.prj.flashdeal.global.response.PageResponse;
 
 import lombok.RequiredArgsConstructor;
@@ -34,6 +35,7 @@ public class OrderService {
     private final MemberService memberService;
     private final CartService cartService;
     private final ProductService productService;
+    private final StockService stockService;
 
     /**
      * 주문 생성 (장바구니 → 주문 전환)
@@ -53,9 +55,8 @@ public class OrderService {
 
         // 장바구니 항목 → 주문 항목 변환 및 재고 감소
         for (CartItem cartItem : cartItems) {
-            // SELECT FOR UPDATE로 최신 재고 조회 및 락 선점 후 엔티티에서 직접 감소
             Product product = productService.findCartableProduct(cartItem.getProduct().getId());
-            product.decreaseStock(cartItem.getQuantity());
+            stockService.decreaseStock(product.getId(), cartItem.getQuantity());
 
             // 주문 항목 생성
             OrderItem orderItem = OrderItem.createOrderItem(product, cartItem.getQuantity());
@@ -78,10 +79,8 @@ public class OrderService {
     public OrderResponse createDirectOrder(Long memberId, OrderCreateRequest request) {
         Member member = memberService.getMember(memberId);
 
-        // findCartableProduct()가 SELECT FOR UPDATE로 엔티티를 로드 → 재고 감소는 엔티티에서 직접 수행.
-        // 이 방식으로 Hibernate 1차 캐시 stale 문제 방지 + DB 조회 1회로 최소화.
         Product product = productService.findCartableProduct(request.getProductId());
-        product.decreaseStock(request.getQuantity());
+        stockService.decreaseStock(product.getId(), request.getQuantity());
 
         // 주문 생성
         Order order = Order.createOrder(member);
@@ -140,7 +139,7 @@ public class OrderService {
 
         // 재고 복구
         for (OrderItem orderItem : order.getOrderItems()) {
-            productService.increaseStock(orderItem.getProductId(), orderItem.getQuantity());
+            stockService.increaseStock(orderItem.getProductId(), orderItem.getQuantity());
         }
     }
 

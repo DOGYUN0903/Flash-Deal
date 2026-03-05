@@ -10,7 +10,7 @@ import org.springframework.transaction.annotation.Transactional;
 import com.prj.flashdeal.domain.order.entity.Order;
 import com.prj.flashdeal.domain.order.entity.OrderItem;
 import com.prj.flashdeal.domain.order.repository.OrderRepository;
-import com.prj.flashdeal.domain.product.service.ProductService;
+import com.prj.flashdeal.domain.stock.service.StockService;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -23,7 +23,7 @@ public class OrderScheduler {
     private static final int PAYMENT_TIMEOUT_MINUTES = 10;
 
     private final OrderRepository orderRepository;
-    private final ProductService productService;
+    private final StockService stockService;
 
     /**
      * 30분 이상 결제 미완료 PENDING 주문 자동 취소 (매 1분마다 실행)
@@ -42,7 +42,7 @@ public class OrderScheduler {
 
         for (Order order : expiredOrders) {
             for (OrderItem item : order.getOrderItems()) {
-                productService.increaseStock(item.getProductId(), item.getQuantity());
+                stockService.increaseStock(item.getProductId(), item.getQuantity());
             }
             order.cancel();
         }

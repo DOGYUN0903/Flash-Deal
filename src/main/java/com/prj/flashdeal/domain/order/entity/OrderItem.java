@@ -65,6 +65,14 @@ public class OrderItem extends BaseTimeEntity {
                 .build();
     }
 
+    public static OrderItem createOrderItem(Product product, int quantity, int price) {
+        return OrderItem.builder()
+                .product(product)
+                .quantity(quantity)
+                .price(price)
+                .build();
+    }
+
     /**
      * 주문과의 연관관계 설정 (Order.addOrderItem()에서만 호출)
      */

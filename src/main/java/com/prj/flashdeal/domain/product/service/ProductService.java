@@ -2,7 +2,10 @@ package com.prj.flashdeal.domain.product.service;
 
 import com.prj.flashdeal.domain.file.service.FileService;
 import com.prj.flashdeal.domain.product.entity.ProductStatus;
-import com.prj.flashdeal.domain.product.metrics.ProductMetrics;
+import com.prj.flashdeal.domain.product.exception.ProductErrorCode;
+import com.prj.flashdeal.domain.product.exception.ProductException;
+import com.prj.flashdeal.domain.stock.metrics.StockMetrics;
+import com.prj.flashdeal.domain.stock.service.StockService;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -17,8 +20,6 @@ import com.prj.flashdeal.domain.product.dto.response.ProductResponse;
 import com.prj.flashdeal.domain.product.dto.response.ProductResponseForUser;
 import com.prj.flashdeal.domain.product.dto.response.ProductSummaryResponse;
 import com.prj.flashdeal.domain.product.entity.Product;
-import com.prj.flashdeal.domain.product.exception.ProductErrorCode;
-import com.prj.flashdeal.domain.product.exception.ProductException;
 import com.prj.flashdeal.domain.product.repository.ProductRepository;
 import com.prj.flashdeal.global.response.PageResponse;
 
@@ -30,7 +31,8 @@ public class ProductService {
 
     private final ProductRepository productRepository;
     private final FileService fileService;
-    private final ProductMetrics productMetrics;
+    private final StockMetrics stockMetrics;
+    private final StockService stockService;
 
     @Value("${ncp.object-storage.default-image-url}")
     private String defaultImageUrl;
@@ -44,12 +46,20 @@ public class ProductService {
             .name(request.getName())
             .description(request.getDescription())
             .price(request.getPrice())
-            .stock(request.getStock())
             .category(request.getCategory())
             .imageUrl(imageUrl)
             .build();
 
-        return ProductResponse.from(productRepository.save(product));
+        Product savedProduct = productRepository.save(product);
+
+        int stock = request.getStock() != null ? request.getStock() : 0;
+        stockService.createStock(savedProduct, stock);
+
+        if (stock > 0) {
+            savedProduct.markOnSale();
+        }
+
+        return ProductResponse.from(savedProduct, stock);
     }
 
     @Transactional(readOnly = true)
@@ -60,8 +70,9 @@ public class ProductService {
     @Transactional(readOnly = true)
     public ProductResponse getProductForAdmin(Long productId) {
         Product product = getProduct(productId);
+        int stock = stockService.getStock(productId);
 
-        return ProductResponse.from(product);
+        return ProductResponse.from(product, stock);
     }
 
     @Transactional
@@ -74,16 +85,21 @@ public class ProductService {
             request.getName(),
             request.getDescription(),
             request.getPrice(),
-            request.getStock(),
             imageUrl
         );
 
-        return ProductResponse.from(product);
+        int currentStock = stockService.getStock(productId);
+        return ProductResponse.from(product, currentStock);
     }
 
     @Transactional
     public void deleteProduct(Long productId) {
         Product product = getProduct(productId);
+
+        int stock = stockService.getStock(productId);
+        if (stock > 0) {
+            throw new ProductException(ProductErrorCode.STOCK_REMAINS);
+        }
 
         product.delete();
     }
@@ -100,7 +116,8 @@ public class ProductService {
 
         product.validateVisibleToUser();
 
-        return ProductResponseForUser.from(product);
+        int stock = stockService.getStock(productId);
+        return ProductResponseForUser.from(product, stock);
     }
 
     // ---------------- 다른 도메인과 통신을 위한 메서드 ----------------
@@ -110,14 +127,13 @@ public class ProductService {
     }
 
     /**
-     * 주문 가능한 상품 조회 — SELECT FOR UPDATE로 락을 선점한 뒤 엔티티 반환.
-     * 호출 측에서 product.decreaseStock()을 직접 호출하여 재고를 감소시킨다.
-     * 이 메서드가 트랜잭션 내 Product의 첫 번째 접근이어야 Hibernate 1차 캐시 문제를 방지할 수 있다.
+     * 주문 가능한 상품 조회 — ON_SALE 상태 검증만 수행.
+     * 재고 차감은 StockService.decreaseStock()으로 별도 호출할 것.
      */
     @Transactional
     public Product findCartableProduct(Long productId) {
-        productMetrics.registerStockGauge(productId);
-        Product product = productRepository.findByIdWithLock(productId)
+        stockMetrics.registerStockGauge(productId);
+        Product product = productRepository.findById(productId)
             .orElseThrow(() -> new ProductException(ProductErrorCode.PRODUCT_NOT_FOUND));
 
         if (product.getIsDeleted()) {
@@ -128,15 +144,6 @@ public class ProductService {
         }
 
         return product;
-    }
-
-    /**
-     * 재고 복구 (주문 취소용)
-     */
-    @Transactional
-    public void increaseStock(Long productId, int quantity) {
-        Product product = getProduct(productId);
-        product.addStock(quantity);
     }
 
     // ---------------- private 헬퍼 메서드 ----------------
@@ -154,5 +161,4 @@ public class ProductService {
 
         return product;
     }
-
 }

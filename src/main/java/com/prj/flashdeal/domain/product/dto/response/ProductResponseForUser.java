@@ -17,13 +17,13 @@ public record ProductResponseForUser(
     @Schema(description = "상품 이미지 URL", example = "https://cdn.example.com/products/1.jpg") String imageUrl,
     @Schema(description = "상품 카테고리", example = "FASHION") ProductCategory category
 ) {
-    public static ProductResponseForUser from(Product product) {
+    public static ProductResponseForUser from(Product product, int stockQuantity) {
         return new ProductResponseForUser(
             product.getId(),
             product.getName(),
             product.getDescription(),
             product.getPrice(),
-            product.getStockQuantity(),
+            stockQuantity,
             product.getStatus(),
             product.getImageUrl(),
             product.getCategory()
