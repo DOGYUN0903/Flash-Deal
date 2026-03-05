@@ -72,10 +72,6 @@ public class Payment extends BaseTimeEntity {
         this.paidAt = LocalDateTime.now();
     }
 
-    public void failPayment() {
-        this.status = PaymentStatus.FAILED;
-    }
-
     public void refund() {
         if (this.status != PaymentStatus.COMPLETED) {
             throw new PaymentException(PaymentErrorCode.INVALID_PAYMENT_STATUS);
