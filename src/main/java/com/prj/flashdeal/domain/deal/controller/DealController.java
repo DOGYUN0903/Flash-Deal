@@ -20,6 +20,8 @@ import com.prj.flashdeal.global.response.ApiResponse;
 import com.prj.flashdeal.global.security.CustomUserDetails;
 
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -32,22 +34,38 @@ public class DealController {
 
     private final DealService dealService;
 
-    @Operation(summary = "딜 목록 조회")
+    @Operation(summary = "딜 목록 조회", description = "현재 등록된 모든 딜 목록을 조회합니다.")
+    @ApiResponses({
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "딜 목록 조회 성공")
+    })
     @GetMapping
     public ResponseEntity<ApiResponse<List<DealResponse>>> getDeals() {
         return ApiResponse.success(HttpStatus.OK, "딜 목록 조회 성공", dealService.getDeals());
     }
 
-    @Operation(summary = "딜 단건 조회")
+    @Operation(summary = "딜 단건 조회", description = "딜 ID로 딜 상세 정보와 잔여 재고를 조회합니다.")
+    @ApiResponses({
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "딜 조회 성공"),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "존재하지 않는 딜")
+    })
     @GetMapping("/{dealId}")
-    public ResponseEntity<ApiResponse<DealResponse>> getDeal(@PathVariable Long dealId) {
+    public ResponseEntity<ApiResponse<DealResponse>> getDeal(
+        @Parameter(description = "딜 ID", example = "1") @PathVariable Long dealId
+    ) {
         return ApiResponse.success(HttpStatus.OK, "딜 조회 성공", dealService.getDeal(dealId));
     }
 
-    @Operation(summary = "선착순 딜 주문")
+    @Operation(summary = "선착순 딜 주문", description = "ACTIVE 상태의 딜에 선착순 주문을 요청합니다. 토스페이먼츠 결제 승인 후 주문이 생성됩니다.")
+    @ApiResponses({
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "딜 주문 성공"),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "결제 금액 불일치 또는 유효성 검사 실패"),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "인증 필요"),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "존재하지 않는 딜 또는 재고 없음"),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "409", description = "딜이 ACTIVE 상태가 아님")
+    })
     @PostMapping("/{dealId}/order")
     public ResponseEntity<ApiResponse<OrderResponse>> createDealOrder(
-        @PathVariable Long dealId,
+        @Parameter(description = "딜 ID", example = "1") @PathVariable Long dealId,
         @RequestBody @Valid DealOrderRequest request,
         @AuthenticationPrincipal CustomUserDetails userDetails
     ) {
