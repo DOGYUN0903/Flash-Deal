@@ -15,41 +15,12 @@ class ProductTest {
     // ========== 빌더 기본값 ==========
 
     @Test
-    @DisplayName("재고가 있으면 ON_SALE 상태로 생성됨")
-    void builder_WithStock_StatusIsOnSale() {
+    @DisplayName("상품 생성 시 기본 상태는 PREPARING")
+    void builder_DefaultStatus_IsPreparing() {
         // when
-        Product product = createProduct(100);
+        Product product = createProduct();
 
         // then
-        assertThat(product.getStatus()).isEqualTo(ProductStatus.ON_SALE);
-        assertThat(product.getStockQuantity()).isEqualTo(100);
-    }
-
-    @Test
-    @DisplayName("재고가 0이면 PREPARING 상태로 생성됨")
-    void builder_WithZeroStock_StatusIsPreparing() {
-        // when
-        Product product = createProduct(0);
-
-        // then
-        assertThat(product.getStatus()).isEqualTo(ProductStatus.PREPARING);
-        assertThat(product.getStockQuantity()).isEqualTo(0);
-    }
-
-    @Test
-    @DisplayName("재고를 null로 생성하면 stockQuantity=0, PREPARING 상태")
-    void builder_WithNullStock_StockIsZeroAndPreparing() {
-        // when
-        Product product = Product.builder()
-            .name("상품")
-            .description("설명")
-            .price(10000)
-            .stock(null)
-            .category(ProductCategory.ELECTRONICS)
-            .build();
-
-        // then
-        assertThat(product.getStockQuantity()).isEqualTo(0);
         assertThat(product.getStatus()).isEqualTo(ProductStatus.PREPARING);
     }
 
@@ -59,7 +30,8 @@ class ProductTest {
     @DisplayName("validateVisibleToUser 성공 - ON_SALE 상태")
     void validateVisibleToUser_Success_OnSale() {
         // given
-        Product product = createProduct(10);
+        Product product = createProduct();
+        product.markOnSale();
 
         // when & then
         assertThatCode(() -> product.validateVisibleToUser())
@@ -70,8 +42,8 @@ class ProductTest {
     @DisplayName("validateVisibleToUser 성공 - SOLD_OUT 상태")
     void validateVisibleToUser_Success_SoldOut() {
         // given
-        Product product = createProduct(1);
-        product.decreaseStock(1); // stockQuantity=0 → SOLD_OUT
+        Product product = createProduct();
+        product.markSoldOut();
 
         // when & then
         assertThatCode(() -> product.validateVisibleToUser())
@@ -82,182 +54,57 @@ class ProductTest {
     @DisplayName("validateVisibleToUser 실패 - PREPARING 상태")
     void validateVisibleToUser_Fail_Preparing() {
         // given
-        Product product = createProduct(0); // status = PREPARING
+        Product product = createProduct(); // status = PREPARING
 
         // when & then
         assertThatThrownBy(() -> product.validateVisibleToUser())
             .isInstanceOf(ProductException.class);
     }
 
-    // ========== addStock ==========
+    // ========== markSoldOut / markOnSale ==========
 
     @Test
-    @DisplayName("addStock 성공 - 재고 증가")
-    void addStock_Success() {
+    @DisplayName("markSoldOut 성공 - SOLD_OUT 상태로 변경")
+    void markSoldOut_Success() {
         // given
-        Product product = createProduct(10);
-
-        // when
-        product.addStock(5);
-
-        // then
-        assertThat(product.getStockQuantity()).isEqualTo(15);
-    }
-
-    @Test
-    @DisplayName("addStock 성공 - SOLD_OUT 상태에서 ON_SALE로 복구")
-    void addStock_Success_SoldOutToOnSale() {
-        // given
-        Product product = createProduct(1);
-        product.decreaseStock(1); // SOLD_OUT
-        assertThat(product.getStatus()).isEqualTo(ProductStatus.SOLD_OUT);
-
-        // when
-        product.addStock(10);
-
-        // then
+        Product product = createProduct();
+        product.markOnSale();
         assertThat(product.getStatus()).isEqualTo(ProductStatus.ON_SALE);
-        assertThat(product.getStockQuantity()).isEqualTo(10);
-    }
-
-    @Test
-    @DisplayName("addStock 성공 - PREPARING 상태에서 ON_SALE로 복구")
-    void addStock_Success_PreparingToOnSale() {
-        // given
-        Product product = createProduct(0); // PREPARING
 
         // when
-        product.addStock(10);
+        product.markSoldOut();
 
         // then
-        assertThat(product.getStatus()).isEqualTo(ProductStatus.ON_SALE);
-        assertThat(product.getStockQuantity()).isEqualTo(10);
-    }
-
-    @Test
-    @DisplayName("addStock 실패 - 수량이 0이면 예외 발생")
-    void addStock_Fail_ZeroQuantity() {
-        // given
-        Product product = createProduct(10);
-
-        // when & then
-        assertThatThrownBy(() -> product.addStock(0))
-            .isInstanceOf(ProductException.class);
-    }
-
-    @Test
-    @DisplayName("addStock 실패 - 수량이 음수이면 예외 발생")
-    void addStock_Fail_NegativeQuantity() {
-        // given
-        Product product = createProduct(10);
-
-        // when & then
-        assertThatThrownBy(() -> product.addStock(-1))
-            .isInstanceOf(ProductException.class);
-    }
-
-    // ========== decreaseStock ==========
-
-    @Test
-    @DisplayName("decreaseStock 성공 - 재고 감소")
-    void decreaseStock_Success() {
-        // given
-        Product product = createProduct(10);
-
-        // when
-        product.decreaseStock(3);
-
-        // then
-        assertThat(product.getStockQuantity()).isEqualTo(7);
-        assertThat(product.getStatus()).isEqualTo(ProductStatus.ON_SALE);
-    }
-
-    @Test
-    @DisplayName("decreaseStock 성공 - 재고가 0이 되면 SOLD_OUT으로 변경")
-    void decreaseStock_Success_StockZeroToSoldOut() {
-        // given
-        Product product = createProduct(5);
-
-        // when
-        product.decreaseStock(5);
-
-        // then
-        assertThat(product.getStockQuantity()).isEqualTo(0);
         assertThat(product.getStatus()).isEqualTo(ProductStatus.SOLD_OUT);
     }
 
     @Test
-    @DisplayName("decreaseStock 실패 - 재고보다 많은 수량 차감 시 예외 발생")
-    void decreaseStock_Fail_InsufficientStock() {
+    @DisplayName("markOnSale 성공 - ON_SALE 상태로 변경")
+    void markOnSale_Success() {
         // given
-        Product product = createProduct(5);
-
-        // when & then
-        assertThatThrownBy(() -> product.decreaseStock(10))
-            .isInstanceOf(ProductException.class);
-    }
-
-    @Test
-    @DisplayName("decreaseStock 실패 - 수량이 0이면 예외 발생")
-    void decreaseStock_Fail_ZeroQuantity() {
-        // given
-        Product product = createProduct(10);
-
-        // when & then
-        assertThatThrownBy(() -> product.decreaseStock(0))
-            .isInstanceOf(ProductException.class);
-    }
-
-    @Test
-    @DisplayName("decreaseStock 실패 - 수량이 음수이면 예외 발생")
-    void decreaseStock_Fail_NegativeQuantity() {
-        // given
-        Product product = createProduct(10);
-
-        // when & then
-        assertThatThrownBy(() -> product.decreaseStock(-1))
-            .isInstanceOf(ProductException.class);
-    }
-
-    // ========== updateStock ==========
-
-    @Test
-    @DisplayName("updateStock 성공 - 재고 양수이면 ON_SALE")
-    void updateStock_Success_OnSale() {
-        // given
-        Product product = createProduct(10);
+        Product product = createProduct();
+        product.markSoldOut();
+        assertThat(product.getStatus()).isEqualTo(ProductStatus.SOLD_OUT);
 
         // when
-        product.updateStock(50);
+        product.markOnSale();
 
         // then
-        assertThat(product.getStockQuantity()).isEqualTo(50);
         assertThat(product.getStatus()).isEqualTo(ProductStatus.ON_SALE);
     }
 
     @Test
-    @DisplayName("updateStock 성공 - 재고 0이면 SOLD_OUT")
-    void updateStock_Success_SoldOut() {
+    @DisplayName("markOnSale 멱등성 - 이미 ON_SALE이면 상태 유지")
+    void markOnSale_Idempotent() {
         // given
-        Product product = createProduct(10);
+        Product product = createProduct();
+        product.markOnSale();
 
         // when
-        product.updateStock(0);
+        product.markOnSale(); // 중복 호출
 
         // then
-        assertThat(product.getStockQuantity()).isEqualTo(0);
-        assertThat(product.getStatus()).isEqualTo(ProductStatus.SOLD_OUT);
-    }
-
-    @Test
-    @DisplayName("updateStock 실패 - 음수 재고이면 예외 발생")
-    void updateStock_Fail_NegativeStock() {
-        // given
-        Product product = createProduct(10);
-
-        // when & then
-        assertThatThrownBy(() -> product.updateStock(-1))
-            .isInstanceOf(ProductException.class);
+        assertThat(product.getStatus()).isEqualTo(ProductStatus.ON_SALE);
     }
 
     // ========== updateInfo ==========
@@ -266,10 +113,10 @@ class ProductTest {
     @DisplayName("updateInfo 성공 - 전달된 필드만 변경됨")
     void updateInfo_Success_PartialUpdate() {
         // given
-        Product product = createProduct(10);
+        Product product = createProduct();
 
         // when
-        product.updateInfo("새상품명", null, null, null, null);
+        product.updateInfo("새상품명", null, null, null);
 
         // then
         assertThat(product.getName()).isEqualTo("새상품명");
@@ -278,27 +125,13 @@ class ProductTest {
     }
 
     @Test
-    @DisplayName("updateInfo 성공 - 재고 수정 시 status도 함께 변경됨")
-    void updateInfo_Success_StockAndStatusUpdated() {
-        // given
-        Product product = createProduct(10);
-
-        // when
-        product.updateInfo(null, null, null, 0, null);
-
-        // then
-        assertThat(product.getStockQuantity()).isEqualTo(0);
-        assertThat(product.getStatus()).isEqualTo(ProductStatus.SOLD_OUT);
-    }
-
-    @Test
     @DisplayName("updateInfo 실패 - 이름이 공백이면 예외 발생")
     void updateInfo_Fail_BlankName() {
         // given
-        Product product = createProduct(10);
+        Product product = createProduct();
 
         // when & then
-        assertThatThrownBy(() -> product.updateInfo("   ", null, null, null, null))
+        assertThatThrownBy(() -> product.updateInfo("   ", null, null, null))
             .isInstanceOf(ProductException.class);
     }
 
@@ -306,10 +139,10 @@ class ProductTest {
     @DisplayName("updateInfo 실패 - 가격이 0이면 예외 발생")
     void updateInfo_Fail_ZeroPrice() {
         // given
-        Product product = createProduct(10);
+        Product product = createProduct();
 
         // when & then
-        assertThatThrownBy(() -> product.updateInfo(null, null, 0, null, null))
+        assertThatThrownBy(() -> product.updateInfo(null, null, 0, null))
             .isInstanceOf(ProductException.class);
     }
 
@@ -317,31 +150,20 @@ class ProductTest {
     @DisplayName("updateInfo 실패 - 가격이 음수이면 예외 발생")
     void updateInfo_Fail_NegativePrice() {
         // given
-        Product product = createProduct(10);
+        Product product = createProduct();
 
         // when & then
-        assertThatThrownBy(() -> product.updateInfo(null, null, -1000, null, null))
-            .isInstanceOf(ProductException.class);
-    }
-
-    @Test
-    @DisplayName("updateInfo 실패 - 재고가 음수이면 예외 발생")
-    void updateInfo_Fail_NegativeStock() {
-        // given
-        Product product = createProduct(10);
-
-        // when & then
-        assertThatThrownBy(() -> product.updateInfo(null, null, null, -1, null))
+        assertThatThrownBy(() -> product.updateInfo(null, null, -1000, null))
             .isInstanceOf(ProductException.class);
     }
 
     // ========== delete ==========
 
     @Test
-    @DisplayName("delete 성공 - 재고가 0이면 소프트 딜리트")
-    void delete_Success_ZeroStock() {
+    @DisplayName("delete 성공 - 소프트 딜리트")
+    void delete_Success() {
         // given
-        Product product = createProduct(0);
+        Product product = createProduct();
 
         // when
         product.delete();
@@ -350,25 +172,13 @@ class ProductTest {
         assertThat(product.getIsDeleted()).isTrue();
     }
 
-    @Test
-    @DisplayName("delete 실패 - 재고가 남아있으면 예외 발생")
-    void delete_Fail_StockRemains() {
-        // given
-        Product product = createProduct(10);
-
-        // when & then
-        assertThatThrownBy(() -> product.delete())
-            .isInstanceOf(ProductException.class);
-    }
-
     // ========== 헬퍼 메서드 ==========
 
-    private Product createProduct(Integer stock) {
+    private Product createProduct() {
         return Product.builder()
             .name("테스트 상품")
             .description("상품 설명")
             .price(10000)
-            .stock(stock)
             .category(ProductCategory.ELECTRONICS)
             .build();
     }

@@ -42,21 +42,6 @@ class PaymentTest {
         assertThat(payment.getPaidAt()).isNotNull();
     }
 
-    // ========== failPayment ==========
-
-    @Test
-    @DisplayName("failPayment - FAILED 상태로 변경됨")
-    void failPayment_Success() {
-        // given
-        Payment payment = createPayment(10000);
-
-        // when
-        payment.failPayment();
-
-        // then
-        assertThat(payment.getStatus()).isEqualTo(PaymentStatus.FAILED);
-    }
-
     // ========== refund ==========
 
     @Test

@@ -249,8 +249,10 @@ class CartServiceTest {
             .description("테스트 상품 설명")
             .price(price)
             .build();
-
-        product.addStock(stockQuantity);
+        ReflectionTestUtils.setField(product, "id", id);
+        if (stockQuantity > 0) {
+            product.markOnSale();
+        }
         return product;
     }
 }

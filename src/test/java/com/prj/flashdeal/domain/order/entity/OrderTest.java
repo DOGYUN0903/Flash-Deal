@@ -189,13 +189,14 @@ class OrderTest {
     }
 
     private Product createProduct(int price) {
-        return Product.builder()
+        Product product = Product.builder()
             .name("테스트 상품")
             .description("설명")
             .price(price)
-            .stock(100)
             .category(ProductCategory.ELECTRONICS)
             .build();
+        product.markOnSale();
+        return product;
     }
 
     private Order createPaidOrder() {

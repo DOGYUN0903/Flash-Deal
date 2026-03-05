@@ -27,7 +27,9 @@ import com.prj.flashdeal.domain.order.entity.OrderStatus;
 import com.prj.flashdeal.domain.order.exception.OrderException;
 import com.prj.flashdeal.domain.order.repository.OrderRepository;
 import com.prj.flashdeal.domain.product.entity.Product;
+import com.prj.flashdeal.domain.product.entity.ProductCategory;
 import com.prj.flashdeal.domain.product.service.ProductService;
+import com.prj.flashdeal.domain.stock.service.StockService;
 
 @ExtendWith(MockitoExtension.class)
 @DisplayName("OrderService 단위 테스트")
@@ -45,6 +47,9 @@ class OrderServiceTest {
     @Mock
     private ProductService productService;
 
+    @Mock
+    private StockService stockService;
+
     @InjectMocks
     private OrderService orderService;
 
@@ -54,7 +59,7 @@ class OrderServiceTest {
         // given
         Long memberId = 1L;
         Member member = createMember(memberId);
-        Product product = createProduct(1L, 10000, 100);
+        Product product = createProduct(1L, 10000);
 
         CartItem cartItem = CartItem.builder()
             .member(member)
@@ -64,8 +69,9 @@ class OrderServiceTest {
 
         given(memberService.getMember(memberId)).willReturn(member);
         given(cartService.getCartItemsForOrder(member)).willReturn(List.of(cartItem));
+        given(productService.findCartableProduct(anyLong())).willReturn(product);
         given(orderRepository.save(any(Order.class))).willAnswer(invocation -> invocation.getArgument(0));
-        willDoNothing().given(productService).decreaseStock(anyLong(), anyInt());
+        willDoNothing().given(stockService).decreaseStock(anyLong(), anyInt());
         willDoNothing().given(cartService).clearCartForOrder(member);
 
         // when
@@ -74,7 +80,7 @@ class OrderServiceTest {
         // then
         assertThat(response).isNotNull();
         assertThat(response.totalPrice()).isEqualTo(20000);
-        verify(productService, times(1)).decreaseStock(product.getId(), 2);
+        verify(stockService, times(1)).decreaseStock(product.getId(), 2);
         verify(cartService, times(1)).clearCartForOrder(member);
         verify(orderRepository, times(1)).save(any(Order.class));
     }
@@ -103,7 +109,7 @@ class OrderServiceTest {
         int quantity = 3;
 
         Member member = createMember(memberId);
-        Product product = createProduct(productId, 15000, 50);
+        Product product = createProduct(productId, 15000);
 
         OrderCreateRequest request = new OrderCreateRequest();
         ReflectionTestUtils.setField(request, "productId", productId);
@@ -112,7 +118,7 @@ class OrderServiceTest {
         given(memberService.getMember(memberId)).willReturn(member);
         given(productService.findCartableProduct(productId)).willReturn(product);
         given(orderRepository.save(any(Order.class))).willAnswer(invocation -> invocation.getArgument(0));
-        willDoNothing().given(productService).decreaseStock(productId, quantity);
+        willDoNothing().given(stockService).decreaseStock(productId, quantity);
 
         // when
         OrderResponse response = orderService.createDirectOrder(memberId, request);
@@ -120,7 +126,7 @@ class OrderServiceTest {
         // then
         assertThat(response).isNotNull();
         assertThat(response.totalPrice()).isEqualTo(15000 * 3);
-        verify(productService, times(1)).decreaseStock(productId, quantity);
+        verify(stockService, times(1)).decreaseStock(productId, quantity);
         verify(orderRepository, times(1)).save(any(Order.class));
         verify(cartService, never()).clearCartForOrder(any()); // 바로 구매는 장바구니 비우지 않음
     }
@@ -133,7 +139,7 @@ class OrderServiceTest {
         Long orderId = 1L;
 
         Member member = createMember(memberId);
-        Product product = createProduct(1L, 10000, 100);
+        Product product = createProduct(1L, 10000);
         Order order = createOrderWithProduct(orderId, member, product, 2);
 
         given(orderRepository.findByIdAndMemberId(orderId, memberId)).willReturn(Optional.of(order));
@@ -171,17 +177,17 @@ class OrderServiceTest {
         int quantity = 2;
 
         Member member = createMember(memberId);
-        Product product = createProduct(productId, 10000, 100);
+        Product product = createProduct(productId, 10000);
         Order order = createOrderWithProduct(orderId, member, product, quantity);
 
         given(orderRepository.findByIdAndMemberId(orderId, memberId)).willReturn(Optional.of(order));
-        willDoNothing().given(productService).increaseStock(productId, quantity);
+        willDoNothing().given(stockService).increaseStock(productId, quantity);
 
         // when
         orderService.cancelOrder(memberId, orderId);
 
         // then
-        verify(productService, times(1)).increaseStock(productId, quantity);
+        verify(stockService, times(1)).increaseStock(productId, quantity);
     }
 
     // ========== 헬퍼 메서드 ==========
@@ -197,14 +203,15 @@ class OrderServiceTest {
         return member;
     }
 
-    private Product createProduct(Long id, int price, int stockQuantity) {
+    private Product createProduct(Long id, int price) {
         Product product = Product.builder()
             .name("테스트 상품")
             .description("테스트 상품 설명")
             .price(price)
+            .category(ProductCategory.ELECTRONICS)
             .build();
         ReflectionTestUtils.setField(product, "id", id);
-        product.addStock(stockQuantity);
+        product.markOnSale();
         return product;
     }
 

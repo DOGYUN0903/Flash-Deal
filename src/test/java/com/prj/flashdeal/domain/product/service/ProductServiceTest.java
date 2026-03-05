@@ -30,6 +30,8 @@ import com.prj.flashdeal.domain.product.entity.Product;
 import com.prj.flashdeal.domain.product.entity.ProductCategory;
 import com.prj.flashdeal.domain.product.exception.ProductException;
 import com.prj.flashdeal.domain.product.repository.ProductRepository;
+import com.prj.flashdeal.domain.stock.metrics.StockMetrics;
+import com.prj.flashdeal.domain.stock.service.StockService;
 
 @ExtendWith(MockitoExtension.class)
 @DisplayName("ProductService 단위 테스트")
@@ -40,6 +42,12 @@ class ProductServiceTest {
 
     @Mock
     private FileService fileService;
+
+    @Mock
+    private StockMetrics stockMetrics;
+
+    @Mock
+    private StockService stockService;
 
     @InjectMocks
     private ProductService productService;
@@ -57,7 +65,11 @@ class ProductServiceTest {
     void createProduct_Success_DefaultImage() {
         // given
         ProductCreateRequest request = createProductCreateRequest(null);
-        given(productRepository.save(any(Product.class))).willAnswer(inv -> inv.getArgument(0));
+        given(productRepository.save(any(Product.class))).willAnswer(inv -> {
+            Product p = inv.getArgument(0);
+            ReflectionTestUtils.setField(p, "id", 1L);
+            return p;
+        });
 
         // when
         ProductResponse response = productService.createProduct(request);
@@ -75,7 +87,11 @@ class ProductServiceTest {
         ProductCreateRequest request = createProductCreateRequest(image);
 
         given(fileService.uploadFile(image)).willReturn("http://uploaded.jpg");
-        given(productRepository.save(any(Product.class))).willAnswer(inv -> inv.getArgument(0));
+        given(productRepository.save(any(Product.class))).willAnswer(inv -> {
+            Product p = inv.getArgument(0);
+            ReflectionTestUtils.setField(p, "id", 1L);
+            return p;
+        });
 
         // when
         ProductResponse response = productService.createProduct(request);
@@ -92,7 +108,7 @@ class ProductServiceTest {
     void getProductForAdmin_Success() {
         // given
         Long productId = 1L;
-        Product product = createProduct(10);
+        Product product = createProduct(true);
         given(productRepository.findById(productId)).willReturn(Optional.of(product));
 
         // when
@@ -117,8 +133,8 @@ class ProductServiceTest {
     @DisplayName("getProductForAdmin 실패 - 삭제된 상품")
     void getProductForAdmin_Fail_Deleted() {
         // given
-        Product product = createProduct(0);
-        product.delete(); // isDeleted = true
+        Product product = createProduct(false);
+        product.delete();
         given(productRepository.findById(1L)).willReturn(Optional.of(product));
 
         // when & then
@@ -133,7 +149,7 @@ class ProductServiceTest {
     void updateProduct_Success_NoImage() {
         // given
         Long productId = 1L;
-        Product product = createProduct(10);
+        Product product = createProduct(true);
         ProductUpdateRequest request = createProductUpdateRequest(null);
 
         given(productRepository.findById(productId)).willReturn(Optional.of(product));
@@ -151,7 +167,7 @@ class ProductServiceTest {
     void updateProduct_Success_WithImage() {
         // given
         Long productId = 1L;
-        Product product = createProduct(10);
+        Product product = createProduct(true);
         MockMultipartFile image = new MockMultipartFile("image", "update.jpg", "image/jpeg", new byte[]{1, 2, 3});
         ProductUpdateRequest request = createProductUpdateRequest(image);
 
@@ -173,14 +189,29 @@ class ProductServiceTest {
     void deleteProduct_Success() {
         // given
         Long productId = 1L;
-        Product product = createProduct(0);
+        Product product = createProduct(false);
         given(productRepository.findById(productId)).willReturn(Optional.of(product));
+        given(stockService.getStock(productId)).willReturn(0);
 
         // when
         productService.deleteProduct(productId);
 
         // then
         assertThat(product.getIsDeleted()).isTrue();
+    }
+
+    @Test
+    @DisplayName("deleteProduct 실패 - 재고가 남아있으면 예외 발생")
+    void deleteProduct_Fail_StockRemains() {
+        // given
+        Long productId = 1L;
+        Product product = createProduct(true);
+        given(productRepository.findById(productId)).willReturn(Optional.of(product));
+        given(stockService.getStock(productId)).willReturn(10);
+
+        // when & then
+        assertThatThrownBy(() -> productService.deleteProduct(productId))
+            .isInstanceOf(ProductException.class);
     }
 
     @Test
@@ -201,7 +232,7 @@ class ProductServiceTest {
     void getProductForUser_Success() {
         // given
         Long productId = 1L;
-        Product product = createProduct(10); // ON_SALE
+        Product product = createProduct(true); // ON_SALE
         given(productRepository.findById(productId)).willReturn(Optional.of(product));
 
         // when
@@ -216,7 +247,7 @@ class ProductServiceTest {
     void getProductForUser_Fail_Preparing() {
         // given
         Long productId = 1L;
-        Product product = createProduct(0); // PREPARING
+        Product product = createProduct(false); // PREPARING
         given(productRepository.findById(productId)).willReturn(Optional.of(product));
 
         // when & then
@@ -231,7 +262,7 @@ class ProductServiceTest {
     void findCartableProduct_Success() {
         // given
         Long productId = 1L;
-        Product product = createProduct(10); // ON_SALE
+        Product product = createProduct(true); // ON_SALE
         given(productRepository.findById(productId)).willReturn(Optional.of(product));
 
         // when
@@ -246,7 +277,7 @@ class ProductServiceTest {
     void findCartableProduct_Fail_NotOnSale() {
         // given
         Long productId = 1L;
-        Product product = createProduct(0); // PREPARING
+        Product product = createProduct(false); // PREPARING
         given(productRepository.findById(productId)).willReturn(Optional.of(product));
 
         // when & then
@@ -254,48 +285,22 @@ class ProductServiceTest {
             .isInstanceOf(ProductException.class);
     }
 
-    // ========== decreaseStock / increaseStock ==========
-
-    @Test
-    @DisplayName("decreaseStock 성공 - 재고 감소")
-    void decreaseStock_Success() {
-        // given
-        Long productId = 1L;
-        Product product = createProduct(10);
-        given(productRepository.findById(productId)).willReturn(Optional.of(product));
-
-        // when
-        productService.decreaseStock(productId, 3);
-
-        // then
-        assertThat(product.getStockQuantity()).isEqualTo(7);
-    }
-
-    @Test
-    @DisplayName("increaseStock 성공 - 재고 증가")
-    void increaseStock_Success() {
-        // given
-        Long productId = 1L;
-        Product product = createProduct(10);
-        given(productRepository.findById(productId)).willReturn(Optional.of(product));
-
-        // when
-        productService.increaseStock(productId, 5);
-
-        // then
-        assertThat(product.getStockQuantity()).isEqualTo(15);
-    }
-
     // ========== 헬퍼 메서드 ==========
 
-    private Product createProduct(int stock) {
-        return Product.builder()
+    /**
+     * @param onSale true면 ON_SALE, false면 PREPARING
+     */
+    private Product createProduct(boolean onSale) {
+        Product product = Product.builder()
             .name("테스트 상품")
             .description("설명")
             .price(10000)
-            .stock(stock)
             .category(ProductCategory.ELECTRONICS)
             .build();
+        if (onSale) {
+            product.markOnSale();
+        }
+        return product;
     }
 
     private ProductCreateRequest createProductCreateRequest(MockMultipartFile image) {

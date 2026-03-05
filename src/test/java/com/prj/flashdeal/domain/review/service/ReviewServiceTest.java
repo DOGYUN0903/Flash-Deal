@@ -159,9 +159,9 @@ class ReviewServiceTest {
             .name("테스트 상품")
             .description("설명")
             .price(10000)
-            .stock(100)
             .category(ProductCategory.ELECTRONICS)
             .build();
+        product.markOnSale();
         ReflectionTestUtils.setField(product, "id", id);
         return product;
     }
