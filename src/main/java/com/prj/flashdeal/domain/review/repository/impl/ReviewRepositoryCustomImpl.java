@@ -1,5 +1,6 @@
 package com.prj.flashdeal.domain.review.repository.impl;
 
+import static com.prj.flashdeal.domain.member.entity.QMember.*;
 import static com.prj.flashdeal.domain.review.entity.QReview.*;
 
 import java.util.List;
@@ -27,6 +28,7 @@ public class ReviewRepositoryCustomImpl implements ReviewRepositoryCustom {
 
         List<Review> reviews = queryFactory
             .selectFrom(review)
+            .join(review.member, member).fetchJoin()
             .where(
                 review.product.id.eq(productId)
             )

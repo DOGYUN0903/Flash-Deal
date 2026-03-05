@@ -2,6 +2,7 @@ package com.prj.flashdeal.domain.order.repository.impl;
 
 import static com.prj.flashdeal.domain.order.entity.QOrder.*;
 import static com.prj.flashdeal.domain.order.entity.QOrderItem.*;
+import static com.prj.flashdeal.domain.product.entity.QProduct.*;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -33,6 +34,8 @@ public class OrderRepositoryCustomImpl implements OrderRepositoryCustom {
     public Optional<Order> findByIdAndMemberId(Long orderId, Long memberId) {
         Order result = queryFactory
             .selectFrom(order)
+            .leftJoin(order.orderItems, orderItem).fetchJoin()
+            .leftJoin(orderItem.product, product).fetchJoin()
             .where(
                 order.id.eq(orderId),
                 order.member.id.eq(memberId)
