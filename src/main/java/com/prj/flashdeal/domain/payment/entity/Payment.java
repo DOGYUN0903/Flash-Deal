@@ -3,6 +3,8 @@ package com.prj.flashdeal.domain.payment.entity;
 import java.time.LocalDateTime;
 
 import com.prj.flashdeal.domain.order.entity.Order;
+import com.prj.flashdeal.domain.payment.exception.PaymentErrorCode;
+import com.prj.flashdeal.domain.payment.exception.PaymentException;
 import com.prj.flashdeal.global.entity.BaseTimeEntity;
 
 import jakarta.persistence.Column;
