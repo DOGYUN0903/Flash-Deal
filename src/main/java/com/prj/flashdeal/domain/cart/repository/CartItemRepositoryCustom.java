@@ -7,4 +7,5 @@ import com.prj.flashdeal.domain.member.entity.Member;
 
 public interface CartItemRepositoryCustom {
     List<CartItemResponse> findCartItemsByMember(Member member);
+    void deleteAllByMember(Member member);
 }

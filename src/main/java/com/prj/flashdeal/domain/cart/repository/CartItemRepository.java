@@ -4,9 +4,6 @@ import java.util.List;
 import java.util.Optional;
 
 import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.data.jpa.repository.Modifying;
-import org.springframework.data.jpa.repository.Query;
-import org.springframework.data.repository.query.Param;
 
 import com.prj.flashdeal.domain.cart.entity.CartItem;
 import com.prj.flashdeal.domain.member.entity.Member;
@@ -17,7 +14,4 @@ public interface CartItemRepository extends JpaRepository<CartItem, Long>, CartI
 
     List<CartItem> findByMember(Member member);
 
-    @Modifying
-    @Query("DELETE FROM CartItem ci WHERE ci.member = :member")
-    void deleteAllByMember(@Param("member") Member member);
 }

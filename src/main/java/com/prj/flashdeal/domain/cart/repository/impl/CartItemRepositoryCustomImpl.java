@@ -22,6 +22,14 @@ public class CartItemRepositoryCustomImpl implements CartItemRepositoryCustom {
     private final JPAQueryFactory queryFactory;
 
     @Override
+    public void deleteAllByMember(Member member) {
+        queryFactory
+            .delete(cartItem)
+            .where(cartItem.member.eq(member))
+            .execute();
+    }
+
+    @Override
     public List<CartItemResponse> findCartItemsByMember(Member member) {
         return queryFactory
             .select(Projections.constructor(CartItemResponse.class,
