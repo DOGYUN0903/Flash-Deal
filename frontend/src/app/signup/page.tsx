@@ -24,7 +24,7 @@ export default function SignupPage() {
     try {
       const res = await authApi.signup({ name, email, password, phoneNumber });
       toast.success(`${res.data.name}님, 회원가입이 완료됐습니다!`);
-      router.push("/deals");
+      router.push("/");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "회원가입에 실패했습니다.");
     } finally {
