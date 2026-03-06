@@ -11,11 +11,13 @@ import Link from "next/link";
 import Header from "@/components/layout/Header";
 import CategoryTab from "@/components/layout/CategoryTab";
 import { productApi } from "@/lib/product-api";
-import { ProductSummary } from "@/lib/types";
+import { dealApi } from "@/lib/deal-api";
+import { ProductSummary, DealResponse } from "@/lib/types";
 
 export default function ProductsPage() {
   const [products, setProducts] = useState<ProductSummary[]>([]);
   const [loading, setLoading] = useState(true);
+  const [activeDeals, setActiveDeals] = useState<DealResponse[]>([]);
   const [totalPages, setTotalPages] = useState(0);
   const [page, setPage] = useState(0);
 
@@ -33,6 +35,12 @@ export default function ProductsPage() {
   const [appliedExcludeSoldOut, setAppliedExcludeSoldOut] = useState(false);
 
   const hasActiveFilter = appliedName || appliedMinPrice || appliedMaxPrice || appliedExcludeSoldOut;
+
+  useEffect(() => {
+    dealApi.getDeals().then((res) => {
+      setActiveDeals(res.data.filter((d) => d.status === "ACTIVE").slice(0, 3));
+    }).catch(() => {});
+  }, []);
 
   useEffect(() => {
     setLoading(true);
@@ -84,6 +92,48 @@ export default function ProductsPage() {
   return (
     <div>
       <Header />
+
+      {/* 히어로 배너 */}
+      {activeDeals.length > 0 && (
+        <div className="bg-gradient-to-r from-gray-900 via-gray-800 to-gray-900 text-white">
+          <div className="max-w-7xl mx-auto px-4 py-8 flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div>
+              <p className="text-xs text-yellow-400 font-semibold tracking-widest uppercase mb-1">⚡ Flash Deal — 지금 진행 중</p>
+              <h2 className="text-2xl font-bold mb-1">{activeDeals[0].title}</h2>
+              <p className="text-gray-400 text-sm">{activeDeals[0].productName} · 잔여 {activeDeals[0].remainingStock}개</p>
+            </div>
+            <div className="flex flex-col items-end gap-3 shrink-0">
+              <div className="flex items-baseline gap-2">
+                <span className="text-3xl font-extrabold text-yellow-400">
+                  {activeDeals[0].discountPrice.toLocaleString("ko-KR")}원
+                </span>
+                <span className="text-base text-gray-500 line-through">
+                  {activeDeals[0].originalPrice.toLocaleString("ko-KR")}원
+                </span>
+              </div>
+              <Link href={`/deals/${activeDeals[0].dealId}`}>
+                <button className="bg-yellow-400 hover:bg-yellow-300 text-black text-sm font-bold px-5 py-2 rounded-lg transition-colors">
+                  지금 구매하기 →
+                </button>
+              </Link>
+            </div>
+          </div>
+          {activeDeals.length > 1 && (
+            <div className="border-t border-gray-700">
+              <div className="max-w-7xl mx-auto px-4 py-3 flex gap-6 overflow-x-auto">
+                {activeDeals.slice(1).map((deal) => (
+                  <Link key={deal.dealId} href={`/deals/${deal.dealId}`} className="flex items-center gap-3 shrink-0 hover:opacity-80 transition-opacity">
+                    <span className="text-xs text-gray-400">{deal.productName}</span>
+                    <span className="text-sm font-bold text-yellow-400">{deal.discountPrice.toLocaleString("ko-KR")}원</span>
+                    <span className="text-xs text-gray-500 line-through">{deal.originalPrice.toLocaleString("ko-KR")}원</span>
+                  </Link>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
       <CategoryTab activeCategory={category} onCategoryChange={handleCategoryChange} />
 
       <div className="max-w-7xl mx-auto px-4 py-6">
