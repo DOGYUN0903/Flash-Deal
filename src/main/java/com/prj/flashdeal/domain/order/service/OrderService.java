@@ -144,6 +144,14 @@ public class OrderService {
     }
 
     /**
+     * 딜 주문 저장 — DealService에서 Order/Payment 조립 후 위임 저장.
+     */
+    @Transactional
+    public Order saveOrder(Order order) {
+        return orderRepository.save(order);
+    }
+
+    /**
      * 주문 조회 (내부 사용)
      */
     @Transactional(readOnly = true)

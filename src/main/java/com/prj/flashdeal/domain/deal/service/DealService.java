@@ -17,14 +17,12 @@ import com.prj.flashdeal.domain.member.service.MemberService;
 import com.prj.flashdeal.domain.order.dto.response.OrderResponse;
 import com.prj.flashdeal.domain.order.entity.Order;
 import com.prj.flashdeal.domain.order.entity.OrderItem;
-import com.prj.flashdeal.domain.order.repository.OrderRepository;
+import com.prj.flashdeal.domain.order.service.OrderService;
 import com.prj.flashdeal.domain.payment.client.TossPaymentClient;
 import com.prj.flashdeal.domain.payment.entity.Payment;
 import com.prj.flashdeal.domain.payment.entity.PaymentMethod;
 import com.prj.flashdeal.domain.product.entity.Product;
-import com.prj.flashdeal.domain.product.exception.ProductErrorCode;
-import com.prj.flashdeal.domain.product.exception.ProductException;
-import com.prj.flashdeal.domain.product.repository.ProductRepository;
+import com.prj.flashdeal.domain.product.service.ProductService;
 import com.prj.flashdeal.domain.stock.service.StockService;
 
 import lombok.RequiredArgsConstructor;
@@ -34,8 +32,8 @@ import lombok.RequiredArgsConstructor;
 public class DealService {
 
     private final DealRepository dealRepository;
-    private final OrderRepository orderRepository;
-    private final ProductRepository productRepository;
+    private final OrderService orderService;
+    private final ProductService productService;
     private final MemberService memberService;
     private final StockService stockService;
     private final TossPaymentClient tossPaymentClient;
@@ -75,7 +73,7 @@ public class DealService {
         Member member = memberService.getMember(memberId);
         Deal deal = getActiveDeal(dealId);
 
-        if (!request.getAmount().equals(deal.getDiscountPrice())) {
+        if (!request.getAmount().equals(deal.getDiscountPrice() * request.getQuantity())) {
             throw new DealException(DealErrorCode.DEAL_PAYMENT_AMOUNT_MISMATCH);
         }
 
@@ -100,15 +98,14 @@ public class DealService {
         payment.completePayment(PaymentMethod.TOSS);
         order.completePayment(payment);
 
-        return OrderResponse.from(orderRepository.save(order));
+        return OrderResponse.from(orderService.saveOrder(order));
     }
 
     // ---------------- 어드민 ----------------
 
     @Transactional
     public DealResponse createDeal(DealCreateRequest request) {
-        Product product = productRepository.findById(request.getProductId())
-            .orElseThrow(() -> new ProductException(ProductErrorCode.PRODUCT_NOT_FOUND));
+        Product product = productService.getProductEntity(request.getProductId());
 
         Deal deal = Deal.builder()
             .product(product)

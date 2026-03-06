@@ -59,6 +59,9 @@ public class ProductService {
             savedProduct.markOnSale();
         }
 
+        // 신규 상품 재고 Gauge 등록 — @PostConstruct로 기존 상품은 이미 등록됨
+        stockMetrics.registerStockGauge(savedProduct.getId());
+
         return ProductResponse.from(savedProduct, stock);
     }
 
@@ -132,7 +135,6 @@ public class ProductService {
      */
     @Transactional
     public Product findCartableProduct(Long productId) {
-        stockMetrics.registerStockGauge(productId);
         Product product = productRepository.findById(productId)
             .orElseThrow(() -> new ProductException(ProductErrorCode.PRODUCT_NOT_FOUND));
 
