@@ -49,15 +49,8 @@ public class DealService {
 
     @Transactional(readOnly = true)
     public DealResponse getDeal(Long dealId) {
-        Deal deal = getDealEntity(dealId);
+        Deal deal = findDeal(dealId);
         return DealResponse.from(deal, stockService.getStock(deal.getProduct().getId()));
-    }
-
-    @Transactional(readOnly = true)
-    public Deal getActiveDeal(Long dealId) {
-        Deal deal = getDealEntity(dealId);
-        deal.validateActive();
-        return deal;
     }
 
     // ---------------- 딜 주문 ----------------
@@ -71,21 +64,18 @@ public class DealService {
     @Transactional
     public OrderResponse createDealOrder(Long memberId, Long dealId, DealOrderRequest request) {
         Member member = memberService.getMember(memberId);
-        Deal deal = getActiveDeal(dealId);
-
-        if (!request.getAmount().equals(deal.getDiscountPrice() * request.getQuantity())) {
-            throw new DealException(DealErrorCode.DEAL_PAYMENT_AMOUNT_MISMATCH);
-        }
+        Deal deal = findDeal(dealId);
+        deal.validateActive();
+        deal.validateOrderAmount(request.getAmount(), request.getQuantity());
 
         // 재고 차감 (SELECT FOR UPDATE)
         stockService.decreaseStock(deal.getProduct().getId(), request.getQuantity());
 
         // 주문 생성 — 딜 할인가로 OrderItem 생성
         Order order = Order.createOrder(member);
-        OrderItem orderItem = OrderItem.createOrderItem(
+        order.addOrderItem(OrderItem.createOrderItem(
             deal.getProduct(), request.getQuantity(), deal.getDiscountPrice()
-        );
-        order.addOrderItem(orderItem);
+        ));
 
         // Toss 결제 승인 — @Transactional 안에서 외부 API 호출 (V1 병목 지점)
         tossPaymentClient.confirm(request.getPaymentKey(), request.getOrderId(), request.getAmount());
@@ -121,9 +111,9 @@ public class DealService {
         return DealResponse.from(saved, stockService.getStock(product.getId()));
     }
 
-    // ---------------- 헬퍼 ----------------
+    // ---------------- private 헬퍼 ----------------
 
-    private Deal getDealEntity(Long dealId) {
+    private Deal findDeal(Long dealId) {
         return dealRepository.findById(dealId)
             .orElseThrow(() -> new DealException(DealErrorCode.DEAL_NOT_FOUND));
     }

@@ -72,6 +72,12 @@ public class Deal extends BaseTimeEntity {
         }
     }
 
+    public void validateOrderAmount(int amount, int quantity) {
+        if (amount != this.discountPrice * quantity) {
+            throw new DealException(DealErrorCode.DEAL_PAYMENT_AMOUNT_MISMATCH);
+        }
+    }
+
     public void activate() {
         this.status = DealStatus.ACTIVE;
     }
