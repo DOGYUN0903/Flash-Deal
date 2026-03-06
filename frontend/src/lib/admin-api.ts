@@ -1,5 +1,5 @@
 import { api } from "./api";
-import { ApiResponse, PageResponse } from "./types";
+import { ApiResponse, DealResponse, PageResponse } from "./types";
 
 export interface AdminProductSummary {
   productId: number;
@@ -39,21 +39,10 @@ export interface ProductUpdateBody {
 
 export interface DealCreateBody {
   productId: number;
-  dealPrice: number;
-  stock: number;
-  openTime: string;
-  endTime: string;
-}
-
-export interface AdminDealDetail {
-  id: number;
-  productName: string;
-  productDescription: string;
-  originalPrice: number;
-  dealPrice: number;
-  stock: number;
-  openTime: string;
-  endTime: string;
+  title: string;
+  discountPrice: number;
+  startAt: string;
+  endAt: string;
 }
 
 export interface AdminOrderSummary {
@@ -116,7 +105,7 @@ export const adminApi = {
 
   // 딜
   createDeal: (body: DealCreateBody) =>
-    api.post<ApiResponse<AdminDealDetail>>("/api/admin/deals", body),
+    api.post<ApiResponse<DealResponse>>("/api/admin/deals", body),
 
   // 주문
   getOrders: (page = 0, size = 10) =>
