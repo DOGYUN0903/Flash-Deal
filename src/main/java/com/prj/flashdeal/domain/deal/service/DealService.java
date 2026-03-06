@@ -1,7 +1,7 @@
 package com.prj.flashdeal.domain.deal.service;
 
-import java.util.List;
-
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -12,6 +12,7 @@ import com.prj.flashdeal.domain.deal.entity.Deal;
 import com.prj.flashdeal.domain.deal.exception.DealErrorCode;
 import com.prj.flashdeal.domain.deal.exception.DealException;
 import com.prj.flashdeal.domain.deal.repository.DealRepository;
+import com.prj.flashdeal.global.response.PageResponse;
 import com.prj.flashdeal.domain.member.entity.Member;
 import com.prj.flashdeal.domain.member.service.MemberService;
 import com.prj.flashdeal.domain.order.dto.response.OrderResponse;
@@ -41,10 +42,10 @@ public class DealService {
     // ---------------- 딜 조회 ----------------
 
     @Transactional(readOnly = true)
-    public List<DealResponse> getDeals() {
-        return dealRepository.findAll().stream()
-            .map(deal -> DealResponse.from(deal, stockService.getStock(deal.getProduct().getId())))
-            .toList();
+    public PageResponse<DealResponse> getDeals(Pageable pageable) {
+        Page<DealResponse> page = dealRepository.findAll(pageable)
+            .map(deal -> DealResponse.from(deal, stockService.getStock(deal.getProduct().getId())));
+        return new PageResponse<>(page);
     }
 
     @Transactional(readOnly = true)

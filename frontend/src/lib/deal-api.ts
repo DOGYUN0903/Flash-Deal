@@ -1,5 +1,5 @@
 import { api } from "./api";
-import { ApiResponse, DealResponse, OrderDetail } from "./types";
+import { ApiResponse, DealResponse, OrderDetail, PageResponse } from "./types";
 
 export interface DealOrderBody {
   paymentKey: string;
@@ -9,8 +9,8 @@ export interface DealOrderBody {
 }
 
 export const dealApi = {
-  getDeals: () =>
-    api.get<ApiResponse<DealResponse[]>>("/api/deals"),
+  getDeals: (page = 0, size = 10) =>
+    api.get<ApiResponse<PageResponse<DealResponse>>>(`/api/deals?page=${page}&size=${size}`),
 
   getDeal: (dealId: number) =>
     api.get<ApiResponse<DealResponse>>(`/api/deals/${dealId}`),

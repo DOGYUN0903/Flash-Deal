@@ -1,7 +1,7 @@
 package com.prj.flashdeal.domain.deal.controller;
 
-import java.util.List;
-
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -17,6 +17,7 @@ import com.prj.flashdeal.domain.deal.dto.response.DealResponse;
 import com.prj.flashdeal.domain.deal.service.DealService;
 import com.prj.flashdeal.domain.order.dto.response.OrderResponse;
 import com.prj.flashdeal.global.response.ApiResponse;
+import com.prj.flashdeal.global.response.PageResponse;
 import com.prj.flashdeal.global.security.CustomUserDetails;
 
 import io.swagger.v3.oas.annotations.Operation;
@@ -34,13 +35,15 @@ public class DealController {
 
     private final DealService dealService;
 
-    @Operation(summary = "딜 목록 조회", description = "현재 등록된 모든 딜 목록을 조회합니다.")
+    @Operation(summary = "딜 목록 조회", description = "현재 등록된 모든 딜 목록을 페이징으로 조회합니다.")
     @ApiResponses({
         @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "딜 목록 조회 성공")
     })
     @GetMapping
-    public ResponseEntity<ApiResponse<List<DealResponse>>> getDeals() {
-        return ApiResponse.success(HttpStatus.OK, "딜 목록 조회 성공", dealService.getDeals());
+    public ResponseEntity<ApiResponse<PageResponse<DealResponse>>> getDeals(
+        @PageableDefault(size = 10) Pageable pageable
+    ) {
+        return ApiResponse.success(HttpStatus.OK, "딜 목록 조회 성공", dealService.getDeals(pageable));
     }
 
     @Operation(summary = "딜 단건 조회", description = "딜 ID로 딜 상세 정보와 잔여 재고를 조회합니다.")

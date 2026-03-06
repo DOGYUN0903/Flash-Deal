@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { Zap, Clock } from "lucide-react";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import Header from "@/components/layout/Header";
 import { dealApi } from "@/lib/deal-api";
 import { DealResponse } from "@/lib/types";
@@ -47,14 +48,20 @@ function Countdown({ endAt }: { endAt: string }) {
 export default function DealsPage() {
   const [deals, setDeals] = useState<DealResponse[]>([]);
   const [loading, setLoading] = useState(true);
+  const [page, setPage] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
 
   useEffect(() => {
+    setLoading(true);
     dealApi
-      .getDeals()
-      .then((res) => setDeals(res.data))
+      .getDeals(page)
+      .then((res) => {
+        setDeals(res.data.data);
+        setTotalPages(res.data.totalPages);
+      })
       .catch(() => toast.error("딜 목록을 불러오지 못했습니다."))
       .finally(() => setLoading(false));
-  }, []);
+  }, [page]);
 
   const activeDeals = deals.filter((d) => d.status === "ACTIVE");
   const otherDeals = deals.filter((d) => d.status !== "ACTIVE");
@@ -95,6 +102,20 @@ export default function DealsPage() {
               </section>
             )}
           </>
+        )}
+
+        {totalPages > 1 && (
+          <div className="flex justify-center gap-2 mt-10">
+            <Button variant="outline" size="sm" disabled={page === 0} onClick={() => setPage((p) => p - 1)}>
+              이전
+            </Button>
+            <span className="flex items-center px-3 text-sm text-gray-600">
+              {page + 1} / {totalPages}
+            </span>
+            <Button variant="outline" size="sm" disabled={page >= totalPages - 1} onClick={() => setPage((p) => p + 1)}>
+              다음
+            </Button>
+          </div>
         )}
       </div>
     </div>
