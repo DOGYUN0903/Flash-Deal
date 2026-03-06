@@ -4,7 +4,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { useRouter, usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
-import { ShoppingCart, User, LogOut, Package, LogIn } from "lucide-react";
+import { ShoppingCart, User, LogOut, Package, LogIn, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { authApi } from "@/lib/auth-api";
 import { cartApi } from "@/lib/cart-api";
@@ -47,6 +47,12 @@ export default function Header() {
           <span className="text-xl font-bold">Flash Deal</span>
         </Link>
         <nav className="flex items-center gap-1">
+          <Link href="/deals">
+            <Button variant="ghost" size="sm" className="gap-2 text-yellow-600 hover:text-yellow-700 hover:bg-yellow-50">
+              <Zap size={18} className="fill-yellow-400" />
+              딜
+            </Button>
+          </Link>
           <Link href="/mypage">
             <Button variant="ghost" size="sm" className="gap-2">
               <User size={18} />
