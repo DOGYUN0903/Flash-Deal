@@ -95,6 +95,19 @@ export interface CartResponse {
 }
 
 
+export interface DealResponse {
+  dealId: number;
+  productId: number;
+  productName: string;
+  title: string;
+  originalPrice: number;
+  discountPrice: number;
+  remainingStock: number;
+  status: string;
+  startAt: string;
+  endAt: string;
+}
+
 export interface OrderItem {
   orderItemId: number;
   productId: number;
