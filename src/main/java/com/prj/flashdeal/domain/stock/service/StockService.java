@@ -39,6 +39,11 @@ public class StockService {
             .orElseThrow(() -> new StockException(StockErrorCode.STOCK_NOT_FOUND));
 
         stock.decrease(quantity);
+        // TODO: V3에서 StockDepletedEvent로 개선 예정
+        // ProductService 순환 의존 문제로 StockService에서 Product 상태 직접 변경
+        if (stock.getQuantity() == 0) {
+            stock.getProduct().markSoldOut();
+        }
     }
 
     /**
@@ -51,6 +56,8 @@ public class StockService {
             .orElseThrow(() -> new StockException(StockErrorCode.STOCK_NOT_FOUND));
 
         stock.increase(quantity);
+        // TODO: V3에서 StockRestoredEvent로 개선 예정
+        stock.getProduct().markOnSale();
     }
 
     /**
@@ -63,6 +70,12 @@ public class StockService {
             .orElseThrow(() -> new StockException(StockErrorCode.STOCK_NOT_FOUND));
 
         stock.updateQuantity(quantity);
+        // TODO: V3에서 Domain Event로 개선 예정
+        if (quantity == 0) {
+            stock.getProduct().markSoldOut();
+        } else {
+            stock.getProduct().markOnSale();
+        }
     }
 
     /**
