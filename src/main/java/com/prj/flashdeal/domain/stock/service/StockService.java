@@ -39,10 +39,6 @@ public class StockService {
             .orElseThrow(() -> new StockException(StockErrorCode.STOCK_NOT_FOUND));
 
         stock.decrease(quantity);
-
-        if (stock.getQuantity() == 0) {
-            stock.getProduct().markSoldOut();
-        }
     }
 
     /**
@@ -55,7 +51,6 @@ public class StockService {
             .orElseThrow(() -> new StockException(StockErrorCode.STOCK_NOT_FOUND));
 
         stock.increase(quantity);
-        stock.getProduct().markOnSale();
     }
 
     /**
@@ -68,12 +63,6 @@ public class StockService {
             .orElseThrow(() -> new StockException(StockErrorCode.STOCK_NOT_FOUND));
 
         stock.updateQuantity(quantity);
-
-        if (quantity == 0) {
-            stock.getProduct().markSoldOut();
-        } else {
-            stock.getProduct().markOnSale();
-        }
     }
 
     /**

@@ -52,6 +52,9 @@ public class Stock extends BaseTimeEntity {
             throw new StockException(StockErrorCode.OUT_OF_STOCK);
         }
         this.quantity -= amount;
+        if (this.quantity == 0) {
+            this.product.markSoldOut();
+        }
     }
 
     public void increase(int amount) {
@@ -59,6 +62,7 @@ public class Stock extends BaseTimeEntity {
             throw new StockException(StockErrorCode.INVALID_STOCK_QUANTITY);
         }
         this.quantity += amount;
+        this.product.markOnSale();
     }
 
     public void updateQuantity(int quantity) {
@@ -66,6 +70,11 @@ public class Stock extends BaseTimeEntity {
             throw new StockException(StockErrorCode.INVALID_STOCK_QUANTITY);
         }
         this.quantity = quantity;
+        if (quantity == 0) {
+            this.product.markSoldOut();
+        } else {
+            this.product.markOnSale();
+        }
     }
 
 }
