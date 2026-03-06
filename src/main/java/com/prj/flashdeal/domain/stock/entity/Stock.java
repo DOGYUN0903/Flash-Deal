@@ -61,4 +61,11 @@ public class Stock extends BaseTimeEntity {
         this.quantity += amount;
     }
 
+    public void updateQuantity(int quantity) {
+        if (quantity < 0) {
+            throw new StockException(StockErrorCode.INVALID_STOCK_QUANTITY);
+        }
+        this.quantity = quantity;
+    }
+
 }

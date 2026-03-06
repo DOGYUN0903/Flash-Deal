@@ -91,6 +91,10 @@ public class ProductService {
             imageUrl
         );
 
+        if (request.getStock() != null) {
+            stockService.updateStock(productId, request.getStock());
+        }
+
         int currentStock = stockService.getStock(productId);
         return ProductResponse.from(product, currentStock);
     }

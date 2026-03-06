@@ -59,6 +59,24 @@ public class StockService {
     }
 
     /**
+     * 재고 직접 설정 — 어드민 상품 수정 시 호출.
+     * 재고가 0이면 SOLD_OUT, 0보다 크면 ON_SALE로 상품 상태 변경.
+     */
+    @Transactional
+    public void updateStock(Long productId, int quantity) {
+        Stock stock = stockRepository.findByProductId(productId)
+            .orElseThrow(() -> new StockException(StockErrorCode.STOCK_NOT_FOUND));
+
+        stock.updateQuantity(quantity);
+
+        if (quantity == 0) {
+            stock.getProduct().markSoldOut();
+        } else {
+            stock.getProduct().markOnSale();
+        }
+    }
+
+    /**
      * 현재 재고 조회
      */
     @Transactional(readOnly = true)
