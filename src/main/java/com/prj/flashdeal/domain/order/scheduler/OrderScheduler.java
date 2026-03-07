@@ -28,7 +28,7 @@ public class OrderScheduler {
     private final StockService stockService;
 
     /**
-     * 30분 이상 결제 미완료 PENDING 주문 자동 취소 (매 1분마다 실행)
+     * 10분 이상 결제 미완료 PENDING 주문 자동 취소 (매 1분마다 실행)
      */
     @Scheduled(fixedDelay = 60_000)
     @Transactional
