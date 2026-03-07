@@ -3,6 +3,7 @@ package com.prj.flashdeal.domain.order.scheduler;
 import java.time.LocalDateTime;
 import java.util.List;
 
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -18,6 +19,7 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 @Component
 @RequiredArgsConstructor
+@ConditionalOnProperty(name = "scheduling.enabled", havingValue = "true", matchIfMissing = true)
 public class OrderScheduler {
 
     private static final int PAYMENT_TIMEOUT_MINUTES = 10;

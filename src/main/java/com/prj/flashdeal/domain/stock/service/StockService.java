@@ -35,7 +35,9 @@ public class StockService {
      */
     @Transactional
     public void decreaseStock(Long productId, int quantity) {
-        Stock stock = stockRepository.findByProductIdWithLock(productId)
+        // V1-a: 락 없이 조회 → Race Condition 재현
+        // V1-b: findByProductIdWithLock(SELECT FOR UPDATE)으로 교체 예정
+        Stock stock = stockRepository.findByProductId(productId)
             .orElseThrow(() -> new StockException(StockErrorCode.STOCK_NOT_FOUND));
 
         stock.decrease(quantity);

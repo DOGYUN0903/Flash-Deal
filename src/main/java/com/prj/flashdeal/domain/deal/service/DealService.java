@@ -19,7 +19,7 @@ import com.prj.flashdeal.domain.order.dto.response.OrderResponse;
 import com.prj.flashdeal.domain.order.entity.Order;
 import com.prj.flashdeal.domain.order.entity.OrderItem;
 import com.prj.flashdeal.domain.order.service.OrderService;
-import com.prj.flashdeal.domain.payment.client.TossPaymentClient;
+import com.prj.flashdeal.domain.payment.client.FakePaymentClient;
 import com.prj.flashdeal.domain.payment.entity.Payment;
 import com.prj.flashdeal.domain.payment.entity.PaymentMethod;
 import com.prj.flashdeal.domain.product.entity.Product;
@@ -37,7 +37,7 @@ public class DealService {
     private final ProductService productService;
     private final MemberService memberService;
     private final StockService stockService;
-    private final TossPaymentClient tossPaymentClient;
+    private final FakePaymentClient fakePaymentClient;
 
     // ---------------- 딜 조회 ----------------
 
@@ -78,8 +78,9 @@ public class DealService {
             deal.getProduct(), request.getQuantity(), deal.getDiscountPrice()
         ));
 
-        // Toss 결제 승인 — @Transactional 안에서 외부 API 호출 (V1 병목 지점)
-        tossPaymentClient.confirm(request.getPaymentKey(), request.getOrderId(), request.getAmount());
+        // V1 병목 지점: @Transactional 안에서 외부 결제 호출 (500~1000ms 지연)
+        // → DB 커넥션을 점유한 채 대기 → HikariCP 커넥션 고갈
+        fakePaymentClient.pay(member.getId(), request.getAmount());
 
         // 결제 완료 처리 (Order에 cascade ALL → Payment 자동 저장)
         Payment payment = Payment.builder()

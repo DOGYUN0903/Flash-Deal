@@ -28,6 +28,9 @@ ncp:
     bucket: ${NCP_BUCKET:flash-deal-images}
     default-image-url: ${NCP_DEFAULT_IMAGE_URL}
 
+scheduling:
+  enabled: false
+
 management:
   endpoints:
     web:
