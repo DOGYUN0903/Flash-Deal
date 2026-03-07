@@ -97,7 +97,7 @@ public class DealService {
 
     @Transactional
     public DealResponse createDeal(DealCreateRequest request) {
-        Product product = productService.getProductEntity(request.getProductId());
+        Product product = productService.findCartableProduct(request.getProductId());
 
         Deal deal = Deal.builder()
             .product(product)
@@ -107,7 +107,8 @@ public class DealService {
             .endAt(request.getEndAt())
             .build();
 
-        deal.activate();
+        deal.validateTimeRange();
+        deal.validateDiscountPrice(product.getPrice());
 
         Deal saved = dealRepository.save(deal);
         return DealResponse.from(saved, stockService.getStock(product.getId()));
