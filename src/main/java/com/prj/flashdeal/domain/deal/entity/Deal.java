@@ -70,6 +70,10 @@ public class Deal extends BaseTimeEntity {
         if (this.status != DealStatus.ACTIVE) {
             throw new DealException(DealErrorCode.DEAL_NOT_ACTIVE);
         }
+        if (LocalDateTime.now().isAfter(this.endAt)) {
+            this.status = DealStatus.ENDED;
+            throw new DealException(DealErrorCode.DEAL_ENDED);
+        }
     }
 
     public void validateOrderAmount(int amount, int quantity) {
@@ -78,11 +82,34 @@ public class Deal extends BaseTimeEntity {
         }
     }
 
+    public void validateDiscountPrice(int originalPrice) {
+        if (this.discountPrice >= originalPrice) {
+            throw new DealException(DealErrorCode.INVALID_DISCOUNT_PRICE);
+        }
+    }
+
+    public void validateTimeRange() {
+        if (!this.startAt.isBefore(this.endAt)) {
+            throw new DealException(DealErrorCode.INVALID_DEAL_TIME_RANGE);
+        }
+    }
+
     public void activate() {
+        if (this.status != DealStatus.SCHEDULED) {
+            throw new DealException(DealErrorCode.DEAL_NOT_SCHEDULED);
+        }
         this.status = DealStatus.ACTIVE;
     }
 
     public void end() {
         this.status = DealStatus.ENDED;
+    }
+
+    public boolean shouldActivate(LocalDateTime now) {
+        return this.status == DealStatus.SCHEDULED && !now.isBefore(this.startAt);
+    }
+
+    public boolean shouldEnd(LocalDateTime now) {
+        return this.status == DealStatus.ACTIVE && !now.isBefore(this.endAt);
     }
 }

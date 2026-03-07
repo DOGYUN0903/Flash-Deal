@@ -13,7 +13,12 @@ public enum DealErrorCode implements ErrorCode {
 
     DEAL_NOT_FOUND("딜을 찾을 수 없습니다.", HttpStatus.NOT_FOUND),
     DEAL_NOT_ACTIVE("진행 중인 딜이 아닙니다.", HttpStatus.BAD_REQUEST),
-    DEAL_PAYMENT_AMOUNT_MISMATCH("결제 금액이 딜 가격과 일치하지 않습니다.", HttpStatus.BAD_REQUEST);
+    DEAL_NOT_SCHEDULED("예정 상태의 딜만 활성화할 수 있습니다.", HttpStatus.BAD_REQUEST),
+    DEAL_ENDED("종료된 딜입니다.", HttpStatus.BAD_REQUEST),
+    DEAL_PAYMENT_AMOUNT_MISMATCH("결제 금액이 딜 가격과 일치하지 않습니다.", HttpStatus.BAD_REQUEST),
+    INVALID_DISCOUNT_PRICE("할인 가격은 원가보다 낮아야 합니다.", HttpStatus.BAD_REQUEST),
+    INVALID_DEAL_TIME_RANGE("딜 시작 시간은 종료 시간보다 이전이어야 합니다.", HttpStatus.BAD_REQUEST),
+    PRODUCT_NOT_ON_SALE("판매 중인 상품만 딜로 등록할 수 있습니다.", HttpStatus.BAD_REQUEST);
 
     private final String message;
     private final HttpStatus status;
