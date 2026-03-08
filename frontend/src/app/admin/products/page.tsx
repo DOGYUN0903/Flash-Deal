@@ -104,7 +104,7 @@ export default function AdminProductsPage() {
     adminApi
       .getProducts(p)
       .then((res) => {
-        setProducts(res.data.data);
+        setProducts(res.data.content);
         setTotalPages(res.data.totalPages);
       })
       .catch(() => toast.error("상품 목록을 불러오지 못했습니다."))

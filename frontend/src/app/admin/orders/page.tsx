@@ -33,7 +33,7 @@ export default function AdminOrdersPage() {
     adminApi
       .getOrders(page)
       .then((res) => {
-        setOrders(res.data.data);
+        setOrders(res.data.content);
         setTotalPages(res.data.totalPages);
       })
       .catch(() => toast.error("주문 목록을 불러오지 못했습니다."))

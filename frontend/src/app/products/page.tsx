@@ -38,7 +38,7 @@ export default function ProductsPage() {
 
   useEffect(() => {
     dealApi.getDeals().then((res) => {
-      setActiveDeals(res.data.filter((d) => d.status === "ACTIVE").slice(0, 3));
+      setActiveDeals(res.data.content.filter((d) => d.status === "ACTIVE").slice(0, 3));
     }).catch(() => {});
   }, []);
 
@@ -55,7 +55,7 @@ export default function ProductsPage() {
         size: 15,
       })
       .then((res) => {
-        setProducts(res.data.data);
+        setProducts(res.data.content);
         setTotalPages(res.data.totalPages);
       })
       .catch(() => toast.error("상품 목록을 불러오지 못했습니다."))

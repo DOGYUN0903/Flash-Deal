@@ -32,7 +32,7 @@ export default function OrdersPage() {
     orderApi
       .getOrders(page)
       .then((res) => {
-        setOrders(res.data.data);
+        setOrders(res.data.content);
         setTotalPages(res.data.totalPages);
       })
       .catch(() => {

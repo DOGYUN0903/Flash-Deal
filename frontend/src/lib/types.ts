@@ -40,7 +40,7 @@ export interface PasswordChangeRequest {
 }
 
 export interface PageResponse<T> {
-  data: T[];
+  content: T[];
   pageNumber: number;
   pageSize: number;
   totalElements: number;

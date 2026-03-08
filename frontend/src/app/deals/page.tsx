@@ -56,7 +56,7 @@ export default function DealsPage() {
     dealApi
       .getDeals(page)
       .then((res) => {
-        setDeals(res.data.data);
+        setDeals(res.data.content);
         setTotalPages(res.data.totalPages);
       })
       .catch(() => toast.error("딜 목록을 불러오지 못했습니다."))

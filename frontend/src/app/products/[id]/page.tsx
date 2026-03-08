@@ -78,7 +78,7 @@ export default function ProductDetailPage() {
     productApi
       .getReviews(productId, reviewPage)
       .then((res) => {
-        setReviews(res.data.data);
+        setReviews(res.data.content);
         setReviewTotalPages(res.data.totalPages);
       })
       .catch(() => {});
@@ -98,7 +98,7 @@ export default function ProductDetailPage() {
       setContent("");
       // 리뷰 목록 새로고침
       const res = await productApi.getReviews(productId, 0);
-      setReviews(res.data.data);
+      setReviews(res.data.content);
       setReviewTotalPages(res.data.totalPages);
       setReviewPage(0);
     } catch (err) {
