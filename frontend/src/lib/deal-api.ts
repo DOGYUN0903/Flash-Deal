@@ -2,8 +2,6 @@ import { api } from "./api";
 import { ApiResponse, DealResponse, OrderDetail, PageResponse } from "./types";
 
 export interface DealOrderBody {
-  paymentKey: string;
-  orderId: string;
   amount: number;
   quantity: number;
 }

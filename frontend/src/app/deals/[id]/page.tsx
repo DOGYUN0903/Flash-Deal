@@ -4,15 +4,12 @@ import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Clock, Zap } from "lucide-react";
-import { loadTossPayments, ANONYMOUS } from "@tosspayments/tosspayments-sdk";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import Header from "@/components/layout/Header";
 import { dealApi } from "@/lib/deal-api";
 import { DealResponse } from "@/lib/types";
-
-const CLIENT_KEY = process.env.NEXT_PUBLIC_TOSS_CLIENT_KEY!;
 
 function getDiscountRate(original: number, discount: number) {
   return Math.round(((original - discount) / original) * 100);
@@ -50,7 +47,7 @@ export default function DealDetailPage() {
 
   const [deal, setDeal] = useState<DealResponse | null>(null);
   const [loading, setLoading] = useState(true);
-  const [paying, setPaying] = useState(false);
+  const [ordering, setOrdering] = useState(false);
   const [quantity, setQuantity] = useState(1);
 
   useEffect(() => {
@@ -64,29 +61,17 @@ export default function DealDetailPage() {
       .finally(() => setLoading(false));
   }, [dealId, router]);
 
-  const handlePayment = async () => {
+  const handleOrder = async () => {
     if (!deal) return;
-    setPaying(true);
+    setOrdering(true);
     try {
-      const tossPayments = await loadTossPayments(CLIENT_KEY);
-      const payment = tossPayments.payment({ customerKey: ANONYMOUS });
-      const tossOrderId = `DEAL-${dealId}-${crypto.randomUUID().slice(0, 8)}`;
-
-      sessionStorage.setItem("deal_quantity", String(quantity));
-
-      await payment.requestPayment({
-        method: "CARD",
-        amount: { currency: "KRW", value: deal.discountPrice * quantity },
-        orderId: tossOrderId,
-        orderName: deal.title,
-        successUrl: `${window.location.origin}/deals/${dealId}/success`,
-        failUrl: `${window.location.origin}/deals/${dealId}`,
-      });
-    } catch (err: unknown) {
-      if (err && typeof err === "object" && "code" in err && (err as { code: string }).code !== "USER_CANCEL") {
-        toast.error("결제 중 오류가 발생했습니다.");
-      }
-      setPaying(false);
+      const amount = deal.discountPrice * quantity;
+      const res = await dealApi.createDealOrder(dealId, { amount, quantity });
+      toast.success("딜 주문이 완료되었습니다!");
+      router.push(`/orders/${res.data.orderId}`);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "딜 주문에 실패했습니다.");
+      setOrdering(false);
     }
   };
 
@@ -175,10 +160,10 @@ export default function DealDetailPage() {
           <Button
             className="w-full"
             size="lg"
-            onClick={handlePayment}
-            disabled={paying}
+            onClick={handleOrder}
+            disabled={ordering}
           >
-            {paying ? "결제창 이동 중..." : `${totalPrice.toLocaleString("ko-KR")}원 지금 구매`}
+            {ordering ? "주문 처리 중..." : `${totalPrice.toLocaleString("ko-KR")}원 지금 구매`}
           </Button>
         ) : (
           <Button className="w-full" size="lg" disabled>
