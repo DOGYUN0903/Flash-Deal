@@ -11,17 +11,12 @@ import com.prj.flashdeal.domain.deal.dto.response.DealResponse;
 import com.prj.flashdeal.domain.deal.entity.Deal;
 import com.prj.flashdeal.domain.deal.exception.DealErrorCode;
 import com.prj.flashdeal.domain.deal.exception.DealException;
+
 import com.prj.flashdeal.domain.deal.repository.DealRepository;
+import com.prj.flashdeal.domain.deal.service.DealOrderTransactionService.DealOrderContext;
 import com.prj.flashdeal.global.response.PageResponse;
-import com.prj.flashdeal.domain.member.entity.Member;
-import com.prj.flashdeal.domain.member.service.MemberService;
 import com.prj.flashdeal.domain.order.dto.response.OrderResponse;
-import com.prj.flashdeal.domain.order.entity.Order;
-import com.prj.flashdeal.domain.order.entity.OrderItem;
-import com.prj.flashdeal.domain.order.service.OrderService;
 import com.prj.flashdeal.domain.payment.client.FakePaymentClient;
-import com.prj.flashdeal.domain.payment.entity.Payment;
-import com.prj.flashdeal.domain.payment.entity.PaymentMethod;
 import com.prj.flashdeal.domain.product.entity.Product;
 import com.prj.flashdeal.domain.product.service.ProductService;
 import com.prj.flashdeal.domain.stock.service.StockService;
@@ -33,11 +28,10 @@ import lombok.RequiredArgsConstructor;
 public class DealService {
 
     private final DealRepository dealRepository;
-    private final OrderService orderService;
     private final ProductService productService;
-    private final MemberService memberService;
     private final StockService stockService;
     private final FakePaymentClient fakePaymentClient;
+    private final DealOrderTransactionService dealOrderTxService;
 
     // ---------------- 딜 조회 ----------------
 
@@ -57,40 +51,27 @@ public class DealService {
     // ---------------- 딜 주문 ----------------
 
     /**
-     * 선착순 딜 주문
+     * 선착순 딜 주문 — 트랜잭션 분리 적용
      *
-     * V1 문제 재현: @Transactional 안에서 외부 API(Toss) 호출
-     * → DB 커넥션을 점유한 채 외부 HTTP 통신 대기 → HikariCP 커넥션 고갈
+     * TX1: 검증 + 재고 차감 (DB 커넥션 사용 후 즉시 반환)
+     * 결제: 트랜잭션 밖에서 실행 (DB 커넥션 미점유)
+     * TX2: 주문 생성 + 결제 완료 처리
      */
-    @Transactional
     public OrderResponse createDealOrder(Long memberId, Long dealId, DealOrderRequest request) {
-        Member member = memberService.getMember(memberId);
-        Deal deal = findDeal(dealId);
-        deal.validateActive();
-        deal.validateOrderAmount(request.getAmount(), request.getQuantity());
+        // TX1: 검증 + 재고 차감 → 커넥션 즉시 반환
+        DealOrderContext context = dealOrderTxService.validateAndDecreaseStock(memberId, dealId, request);
 
-        // 재고 차감 (SELECT FOR UPDATE)
-        stockService.decreaseStock(deal.getProduct().getId(), request.getQuantity());
+        // 결제: 트랜잭션 밖 → DB 커넥션 미점유
+        try {
+            fakePaymentClient.pay(context.memberId(), request.getAmount());
+        } catch (Exception e) {
+            // 결제 실패 시 재고 복구
+            stockService.increaseStock(context.productId(), request.getQuantity());
+            throw e;
+        }
 
-        // 주문 생성 — 딜 할인가로 OrderItem 생성
-        Order order = Order.createOrder(member);
-        order.addOrderItem(OrderItem.createOrderItem(
-            deal.getProduct(), request.getQuantity(), deal.getDiscountPrice()
-        ));
-
-        // V1 병목 지점: @Transactional 안에서 외부 결제 호출 (500~1000ms 지연)
-        // → DB 커넥션을 점유한 채 대기 → HikariCP 커넥션 고갈
-        fakePaymentClient.pay(member.getId(), request.getAmount());
-
-        // 결제 완료 처리 (Order에 cascade ALL → Payment 자동 저장)
-        Payment payment = Payment.builder()
-            .order(order)
-            .amount(request.getAmount())
-            .build();
-        payment.completePayment(PaymentMethod.TOSS);
-        order.completePayment(payment);
-
-        return OrderResponse.from(orderService.saveOrder(order));
+        // TX2: 주문 생성 + 결제 완료
+        return dealOrderTxService.completeOrder(context, request);
     }
 
     // ---------------- 어드민 ----------------
