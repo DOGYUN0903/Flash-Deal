@@ -36,8 +36,8 @@ export default function AdminDealsPage() {
         productId: Number(form.productId),
         title: form.title,
         discountPrice: Number(form.discountPrice),
-        startAt: new Date(form.startAt).toISOString().slice(0, 19),
-        endAt: new Date(form.endAt).toISOString().slice(0, 19),
+        startAt: form.startAt,
+        endAt: form.endAt,
       });
       toast.success("딜이 등록되었습니다.");
       setLastCreated(res.data);
