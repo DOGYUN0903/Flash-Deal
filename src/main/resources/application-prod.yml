@@ -1,5 +1,8 @@
 # 운영 환경 설정
 spring:
+  application:
+    name: flash-deal
+
   datasource:
     url: jdbc:mysql://${MYSQL_HOST}/${MYSQL_DBNAME}?serverTimezone=Asia/Seoul&characterEncoding=UTF-8&useUnicode=true
     username: ${MYSQL_USERNAME}
