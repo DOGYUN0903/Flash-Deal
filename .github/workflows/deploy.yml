@@ -12,6 +12,7 @@ on:
       - 'Dockerfile'
       - 'docker-compose.prod.yml'
       - 'monitoring/**'
+      - '.github/workflows/**'
 
 jobs:
   # ==================================
