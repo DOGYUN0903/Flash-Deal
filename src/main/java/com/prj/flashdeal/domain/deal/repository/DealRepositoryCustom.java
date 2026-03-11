@@ -8,4 +8,6 @@ import com.prj.flashdeal.domain.deal.dto.response.DealResponse;
 public interface DealRepositoryCustom {
 
     Page<DealResponse> findDealsWithStock(Pageable pageable);
+
+    DealResponse findDealWithStock(Long dealId);
 }

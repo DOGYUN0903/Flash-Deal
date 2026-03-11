@@ -43,8 +43,11 @@ public class DealService {
 
     @Transactional(readOnly = true)
     public DealResponse getDeal(Long dealId) {
-        Deal deal = findDeal(dealId);
-        return DealResponse.from(deal, stockService.getStock(deal.getProduct().getId()));
+        DealResponse response = dealRepository.findDealWithStock(dealId);
+        if (response == null) {
+            throw new DealException(DealErrorCode.DEAL_NOT_FOUND);
+        }
+        return response;
     }
 
     // ---------------- 딜 주문 ----------------

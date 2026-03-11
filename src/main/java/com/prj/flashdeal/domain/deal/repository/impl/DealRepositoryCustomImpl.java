@@ -53,4 +53,25 @@ public class DealRepositoryCustomImpl implements DealRepositoryCustom {
 
         return PageableExecutionUtils.getPage(content, pageable, countQuery::fetchOne);
     }
+
+    @Override
+    public DealResponse findDealWithStock(Long dealId) {
+        return queryFactory
+            .select(Projections.constructor(DealResponse.class,
+                deal.id,
+                product.id,
+                product.name,
+                deal.title,
+                product.price,
+                deal.discountPrice,
+                stock.quantity.coalesce(0),
+                deal.status,
+                deal.startAt,
+                deal.endAt))
+            .from(deal)
+            .join(deal.product, product)
+            .leftJoin(stock).on(stock.product.id.eq(product.id))
+            .where(deal.id.eq(dealId))
+            .fetchOne();
+    }
 }
