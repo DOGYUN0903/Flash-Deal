@@ -37,8 +37,7 @@ public class DealService {
 
     @Transactional(readOnly = true)
     public PageResponse<DealResponse> getDeals(Pageable pageable) {
-        Page<DealResponse> page = dealRepository.findAll(pageable)
-            .map(deal -> DealResponse.from(deal, stockService.getStock(deal.getProduct().getId())));
+        Page<DealResponse> page = dealRepository.findDealsWithStock(pageable);
         return new PageResponse<>(page);
     }
 
