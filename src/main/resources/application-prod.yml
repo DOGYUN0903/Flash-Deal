@@ -40,6 +40,8 @@ management:
     prometheus:
       enabled: true
   metrics:
+    tags:
+      application: flash-deal
     export:
       prometheus:
         enabled: true

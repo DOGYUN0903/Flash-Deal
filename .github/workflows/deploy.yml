@@ -1,48 +1,34 @@
-# workflow 이름
 name: flashdeal-ci/cd
 
-# Event : 실행되는 시점을 설정
-# dev 이라는 브랜치에 push 될 때 아래 workflow를 실행
 on:
   push:
     branches:
       - dev
+      - v1/optimization
     paths:
       - 'src/**'
       - 'build.gradle'
       - 'settings.gradle'
       - 'Dockerfile'
       - 'docker-compose.prod.yml'
+      - 'monitoring/**'
 
-# 하나의 workflow는 1개 이상의 job으로 구성된다.
-# 여러 job은 기본적으로 병렬적으로 수행된다.
 jobs:
-  # job을 식별하기 위한 id
-  build-and-deploy:
-    # ubuntu 환경 / 가장 최신 버전(latest)
+  # ==================================
+  # Job 1: 빌드 및 Docker 이미지 푸시
+  # ==================================
+  build:
     runs-on: ubuntu-latest
-    # Step : 특정 작업을 수행하는 가장 작은 단위
-    # Job은 여러 Step들로 구성되어 있다.
     steps:
-      # ==================================
-      # 1단계: 소스 코드 체크아웃
-      # ==================================
       - name: Check out repository
         uses: actions/checkout@v4
 
-      # ==================================
-      # 2단계: JDK 17 설정
-      # ==================================
       - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
           java-version: '17'
 
-      # ==================================
-      # 3단계: Gradle 캐시 설정
-      # 빌드 속도 향상을 위해 Gradle 의존성 캐싱
-      # ==================================
       - name: Cache Gradle packages
         uses: actions/cache@v3
         with:
@@ -53,103 +39,130 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-gradle-
 
-      # ==================================
-      # 4단계: Gradle 빌드
-      # bootJar: 실행 가능한 JAR 파일 생성
-      # -x test: 테스트 제외 (빠른 빌드)
-      # ==================================
       - name: Build with Gradle
         run: |
           chmod +x ./gradlew
           ./gradlew clean bootJar -x test
 
-      # ==================================
-      # 5단계: Docker Hub 로그인
-      # 빌드한 이미지를 Docker Hub에 업로드하기 위해 로그인
-      # ==================================
       - name: Login to Docker Hub
         uses: docker/login-action@v2
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      # ==================================
-      # 6단계: Docker 이미지 빌드 및 푸시
-      # Dockerfile을 사용해 이미지 생성 후 Docker Hub에 업로드
-      # ==================================
       - name: Build and Push Docker Image
         run: |
           docker build -t ${{ secrets.DOCKERHUB_USERNAME }}/flash-deal:latest .
           docker push ${{ secrets.DOCKERHUB_USERNAME }}/flash-deal:latest
 
-      # ==================================
-      # 7단계: 서버로 파일 전송
-      # docker-compose.prod.yml 파일을 서버로 복사
-      # ==================================
-      - name: Copy files to server
+  # ==================================
+  # Job 2: 모니터링 서버 배포 (Prometheus target 업데이트)
+  # ==================================
+  deploy-monitoring:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Copy monitoring files
         uses: appleboy/scp-action@master
         with:
-          host: ${{ secrets.NCP_SERVER_IP }}
+          host: ${{ secrets.NCP_MONITORING_IP }}
           username: root
           key: ${{ secrets.NCP_SSH_KEY }}
-          source: "docker-compose.prod.yml,prometheus/prometheus.yml"
-          target: "/root/flashdeal-app"
+          source: "monitoring/docker-compose.yml"
+          target: "/root"
 
-      # ==================================
-      # 8단계: NCP 서버에 배포
-      # SSH로 서버 접속 후 Docker 컨테이너 재시작
-      # ==================================
-      - name: Deploy to NCP Server
+      - name: Deploy monitoring
         uses: appleboy/ssh-action@master
         with:
-          host: ${{ secrets.NCP_SERVER_IP }}
+          host: ${{ secrets.NCP_MONITORING_IP }}
+          username: root
+          key: ${{ secrets.NCP_SSH_KEY }}
+          script: |
+            cd /root/monitoring
+
+            mkdir -p prometheus
+            cat > prometheus/prometheus.yml << EOF
+            global:
+              scrape_interval: 5s
+              evaluation_interval: 5s
+
+            scrape_configs:
+              - job_name: 'flash-deal'
+                metrics_path: '/actuator/prometheus'
+                static_configs:
+                  - targets:
+                      - '${{ secrets.NCP_APP_IP }}:8080'
+                    labels:
+                      group: 'flash-deal-v1'
+            EOF
+
+            docker compose down || true
+            docker compose up -d
+            docker compose ps
+
+  # ==================================
+  # Job 3: App 서버 배포
+  # ==================================
+  deploy-app:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Copy files to app server
+        uses: appleboy/scp-action@master
+        with:
+          host: ${{ secrets.NCP_APP_IP }}
+          username: root
+          key: ${{ secrets.NCP_SSH_KEY }}
+          source: "docker-compose.prod.yml"
+          target: "/root/flashdeal-app"
+
+      - name: Deploy to app server
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.NCP_APP_IP }}
           username: root
           key: ${{ secrets.NCP_SSH_KEY }}
           script: |
             cd /root/flashdeal-app
 
             cat > .env << EOF
-            MYSQL_HOST=db:3306
+            MYSQL_HOST=${{ secrets.MYSQL_HOST }}
             MYSQL_DBNAME=${{ secrets.MYSQL_DBNAME }}
             MYSQL_USERNAME=${{ secrets.MYSQL_USERNAME }}
             MYSQL_PASSWORD=${{ secrets.MYSQL_PASSWORD }}
-            MYSQL_ROOT_PASSWORD=${{ secrets.MYSQL_ROOT_PASSWORD }}
             DOCKERHUB_USERNAME=${{ secrets.DOCKERHUB_USERNAME }}
             TOSS_SECRET_KEY=${{ secrets.TOSS_SECRET_KEY }}
             TOSS_BASE_URL=${{ secrets.TOSS_BASE_URL }}
             NCP_ACCESS_KEY=${{ secrets.NCP_ACCESS_KEY }}
             NCP_SECRET_KEY=${{ secrets.NCP_SECRET_KEY }}
             NCP_DEFAULT_IMAGE_URL=${{ secrets.NCP_DEFAULT_IMAGE_URL }}
+            SPRING_PROFILES_ACTIVE=prod
             EOF
 
-            # 기존 컨테이너 중지 및 삭제
-            # || true: 실패해도 계속 진행 (처음 배포 시 컨테이너 없을 수 있음)
             docker compose -f docker-compose.prod.yml down || true
-
-            # Docker Hub에서 새 이미지 다운로드
             docker pull ${{ secrets.DOCKERHUB_USERNAME }}/flash-deal:latest
-
-            # 사용하지 않는 Docker 이미지 정리 (디스크 공간 확보)
             docker image prune -f
-
-            # 새 컨테이너 시작 (백그라운드)
             docker compose -f docker-compose.prod.yml up -d
-
-            # 배포 후 로그 확인 (최근 50줄)
-            docker compose -f docker-compose.prod.yml logs --tail=50
-
-            # 컨테이너 상태 확인 (실행 중인지 확인)
             docker compose -f docker-compose.prod.yml ps
 
-      # ==================================
-      # 8단계: 배포 결과 알림
-      # 성공/실패 여부를 GitHub Actions 로그에 출력
-      # ==================================
+  # ==================================
+  # Job 4: 배포 결과 확인
+  # ==================================
+  verify:
+    needs: [deploy-monitoring, deploy-app]
+    runs-on: ubuntu-latest
+    steps:
       - name: Deployment Status
         if: always()
         run: |
           if [ ${{ job.status }} == 'success' ]; then
-            echo "✅ 배포 성공!"
+            echo "✅ 전체 배포 성공!"
           else
             echo "❌ 배포 실패!"
           fi
