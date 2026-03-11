@@ -94,7 +94,7 @@ jobs:
                 metrics_path: '/actuator/prometheus'
                 static_configs:
                   - targets:
-                      - '${{ secrets.NCP_APP_IP }}:8080'
+                      - '${{ secrets.NCP_APP_PRIVATE_IP }}:8080'
                     labels:
                       group: 'flash-deal-v1'
             EOF
