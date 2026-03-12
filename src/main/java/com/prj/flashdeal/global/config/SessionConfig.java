@@ -10,7 +10,7 @@ import org.springframework.session.data.redis.config.annotation.web.http.EnableR
 import org.springframework.session.security.SpringSessionBackedSessionRegistry;
 
 @Configuration
-@EnableRedisIndexedHttpSession
+@EnableRedisIndexedHttpSession(redisNamespace = "flashdeal:session")
 public class SessionConfig {
 
     @Bean
