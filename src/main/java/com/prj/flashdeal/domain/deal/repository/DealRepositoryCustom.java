@@ -1,0 +1,13 @@
+package com.prj.flashdeal.domain.deal.repository;
+
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+
+import com.prj.flashdeal.domain.deal.dto.response.DealResponse;
+
+public interface DealRepositoryCustom {
+
+    Page<DealResponse> findDealsWithStock(Pageable pageable);
+
+    DealResponse findDealWithStock(Long dealId);
+}
