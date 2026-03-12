@@ -1,5 +1,7 @@
 package com.prj.flashdeal.domain.deal.service;
 
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -35,16 +37,21 @@ public class DealService {
 
     // ---------------- 딜 조회 ----------------
 
+    @Cacheable(value = "deals", key = "#pageable.pageNumber + '-' + #pageable.pageSize")
     @Transactional(readOnly = true)
     public PageResponse<DealResponse> getDeals(Pageable pageable) {
         Page<DealResponse> page = dealRepository.findDealsWithStock(pageable);
         return new PageResponse<>(page);
     }
 
+    @Cacheable(value = "deal", key = "#dealId")
     @Transactional(readOnly = true)
     public DealResponse getDeal(Long dealId) {
-        Deal deal = findDeal(dealId);
-        return DealResponse.from(deal, stockService.getStock(deal.getProduct().getId()));
+        DealResponse response = dealRepository.findDealWithStock(dealId);
+        if (response == null) {
+            throw new DealException(DealErrorCode.DEAL_NOT_FOUND);
+        }
+        return response;
     }
 
     // ---------------- 딜 주문 ----------------
@@ -75,6 +82,7 @@ public class DealService {
 
     // ---------------- 어드민 ----------------
 
+    @CacheEvict(value = "deals", allEntries = true)
     @Transactional
     public DealResponse createDeal(DealCreateRequest request) {
         Product product = productService.findCartableProduct(request.getProductId());
