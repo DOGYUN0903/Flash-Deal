@@ -102,6 +102,8 @@ Flash Deal은 한정 수량 상품을 선착순으로 구매하는 이커머스 
 
 ![Flash Deal Architecture](images/flash-deal_MVP_아키텍처.PNG)
 
+> 현재는 확장성을 위해 **App Server, Cloud DB (Managed), Monitoring Server**를 분리하여 운영 중입니다.
+
 ### 🔄 시퀀스 다이어그램 (주문 & 결제)
 
 ![시퀀스 다이어그램](images/시퀀스_다이어그램.PNG)
@@ -522,45 +524,42 @@ spring:
 
 ### 테스트 환경
 
-| 항목 | 스펙 |
-|------|------|
-| 서버 | NCP vCPU 2EA, RAM 8GB, Ubuntu |
-| WAS | Spring Boot 3.5.6 (내장 Tomcat) |
-| DB | MySQL 8.0 (같은 서버, Docker) |
-| HikariCP | max-pool-size: 10 (기본값) |
-| 세션 | In-Memory (서버 메모리) |
-| 테스트 도구 | Apache JMeter 5.6.3 |
-| 모니터링 | Grafana + Prometheus + Micrometer |
-
-### 테스트 시나리오
-
-실제 플래시 딜 사용 패턴을 재현했습니다.
-
-```
-1. 로그인 (Once Only Controller — 스레드당 1회)
-2. 전원 로그인 완료 대기 (Synchronizing Timer)
-3. 딜 목록 조회 GET /api/deals          ← 동시 출발
-4. 딜 상세 조회 GET /api/deals/{id}
-5. 딜 주문 POST /api/deals/{id}/order   ← 핵심 측정 구간
-```
+| 항목 | 스펙                                             |
+|------|------------------------------------------------|
+| 서버 | NCP vCPU 2EA, RAM 8GB, Ubuntu                  |
+| WAS | Spring Boot 3.5.6 (내장 Tomcat)                  |
+| DB | **NCP Cloud DB for MySQL (vCPU 2EA, RAM 8GB)** |
+| HikariCP | max-pool-size: 10 (기본값)                        |
+| 세션 | In-Memory (서버 메모리)                             |
+| 테스트 도구 | Apache JMeter 5.6.3                            |
+| 모니터링 | **별도 모니터링 서버 구성 (Grafana + Prometheus)**       |
 
 ---
 
 <details>
-<summary><strong>Phase 1. Before — 병목이 있는 상태에서 단계별 부하 테스트 (10 → 1000명)</strong></summary>
+<summary><strong>"10명도 못 버틴다" — Race Condition과 커넥션 풀 고갈 발견</strong></summary>
 
 <br>
 
-**목적:** 최적화 전 V1 서버의 성능을 기록하고, 병목의 심각성을 데이터로 증명
+#### 최적화 전 부하 테스트 (10 → 1000명)
 
-#### 1-1. Smoke Test (10명)
+실제 플래시 딜 사용 패턴을 재현하여 최적화 전 V1 서버의 성능을 기록하고, 병목의 심각성을 데이터로 증명합니다.
 
-| API | Avg (ms) | P95 (ms) | Max (ms) | Error % |
-|-----|----------|----------|----------|---------|
-| 로그인 | 529 | 560 | 561 | 0% |
-| 딜 목록 조회 | 55 | 63 | 63 | 0% |
-| 딜 상세 조회 | 47 | 52 | 52 | 0% |
-| **딜 주문** | **817** | **908** | **1,045** | **30%** |
+```
+1. 로그인 (Once Only Controller — 스레드당 1회)
+2. 전원 로그인 완료 대기 (Synchronizing Timer)
+3. 딜 목록 조회 GET /api/deals
+4. 딜 상세 조회 GET /api/deals/{id}
+5. 딜 주문 POST /api/deals/{id}/order
+```
+
+**Smoke Test (10명):**
+
+| API | Avg (ms) | P95 (ms) | Error % |
+|-----|----------|----------|---------|
+| 딜 목록 조회 | 55 | 63 | 0% |
+| 딜 상세 조회 | 47 | 52 | 0% |
+| **딜 주문** | **817** | **908** | **30%** |
 
 | 항목 | 값 |
 |------|-----|
@@ -569,113 +568,12 @@ spring:
 
 ![10명 JMeter Summary](images/v1-load-test/before/10-summary.png)
 ![10명 재고 변화](images/v1-load-test/before/10-stock.png)
-![10명 HikariCP](images/v1-load-test/before/10-hikari.png)
 
 > 10명만으로도 Race Condition 발생. 주문 10건 성공했지만 재고는 1개만 감소.
 
 ---
 
-#### 1-2. Load Test (100명)
-
-| API | Avg (ms) | P95 (ms) | Max (ms) | Error % |
-|-----|----------|----------|----------|---------|
-| 로그인 | 2,884 | 4,754 | 5,167 | 0% |
-| 딜 목록 조회 | 181 | 306 | 313 | 0% |
-| 딜 상세 조회 | 166 | 257 | 269 | 0% |
-| **딜 주문** | **4,204** | **7,018** | **7,993** | **17%** |
-
-| 항목 | 값 |
-|------|-----|
-| 재고 차감 | 100개 중 **11개만 감소** |
-| 초과 판매 | **약 72건** |
-| HikariCP Pending 최대 | **3** |
-| Connection Acquire Time | **250ms** |
-
-![100명 JMeter Summary](images/v1-load-test/before/100-summary.png)
-![100명 재고 변화](images/v1-load-test/before/100-stock.png)
-![100명 CPU](images/v1-load-test/before/100-cpu.png)
-![100명 HikariCP](images/v1-load-test/before/100-hikari.png)
-
-> Connection Pool 포화 징후 시작. Active 10개(풀 100%) 도달, Pending 발생.
-
----
-
-#### 1-3. Load Test (300명)
-
-| API | Avg (ms) | P95 (ms) | Max (ms) | Error % |
-|-----|----------|----------|----------|---------|
-| 로그인 | 7,866 | 13,620 | 14,853 | 0% |
-| 딜 목록 조회 | 432 | 708 | 744 | 0% |
-| 딜 상세 조회 | 370 | 569 | 603 | 0% |
-| **딜 주문** | **11,879** | **20,931** | **23,271** | **21.33%** |
-
-| 항목 | 값 |
-|------|-----|
-| 재고 차감 | 500개 중 **31개만 감소** |
-| 초과 판매 | **약 205건** |
-| HikariCP Pending 최대 | **30** |
-| 모니터링 공백 | **약 40초** (서버 과부하로 Prometheus 응답 불가) |
-
-![300명 JMeter Summary](images/v1-load-test/before/300-summary.png)
-![300명 재고 변화](images/v1-load-test/before/300-stock.png)
-![300명 HikariCP](images/v1-load-test/before/300-hikari.png)
-
-> 재고 그래프에 40초간 데이터 공백 — 서버가 모니터링 요청조차 처리 못하는 상태.
-
----
-
-#### 1-4. Load Test (500명)
-
-| API | Avg (ms) | P95 (ms) | Max (ms) | Error % |
-|-----|----------|----------|----------|---------|
-| 로그인 | 12,651 | 22,199 | 24,356 | 0% |
-| 딜 목록 조회 | 550 | 912 | 954 | 0% |
-| 딜 상세 조회 | 377 | 654 | 725 | 0% |
-| **딜 주문** | **19,101** | **34,084** | **37,944** | **20.80%** |
-
-| 항목 | 값 |
-|------|-----|
-| 재고 차감 | 500개 중 **50개만 감소** |
-| 초과 판매 | **약 346건** |
-| HikariCP Pending 최대 | **164** |
-| Connection Acquire Time | **2.2초** |
-| 모니터링 공백 | **약 70초** |
-
-![500명 JMeter Summary](images/v1-load-test/before/500-summary.png)
-![500명 재고 변화](images/v1-load-test/before/500-stock.png)
-![500명 CPU](images/v1-load-test/before/500-cpu.png)
-![500명 HikariCP](images/v1-load-test/before/500-hikari.png)
-
-> Pending 164개 — 커넥션 풀 완전 붕괴. CPU Max 99.2%.
-
----
-
-#### 1-5. Load Test (1000명)
-
-| API | Avg (ms) | P95 (ms) | Max (ms) | Error % |
-|-----|----------|----------|----------|---------|
-| 로그인 | 24,589 | 43,579 | 48,076 | 0.10% |
-| 딜 목록 조회 | 766 | 1,362 | 1,478 | 0% |
-| 딜 상세 조회 | 711 | 1,271 | 1,448 | 0% |
-| **딜 주문** | **38,389** | **68,667** | **76,448** | **20.30%** |
-
-| 항목 | 값 |
-|------|-----|
-| 재고 차감 | 1000개 중 **약 98개만 감소** |
-| 초과 판매 | **약 700건** |
-| Connection Timeout | **1회 발생** |
-| 모니터링 공백 | **약 2분** |
-
-![1000명 JMeter Summary](images/v1-load-test/before/1000-summary.png)
-![1000명 재고 변화](images/v1-load-test/before/1000-stock.png)
-![1000명 CPU](images/v1-load-test/before/1000-cpu.png)
-![1000명 HikariCP](images/v1-load-test/before/1000-hikari.png)
-
-> 딜 주문 최대 응답시간 **76초**. Connection Timeout 최초 발생. 사실상 서비스 불가 상태.
-
----
-
-#### Before 종합
+**전체 구간 종합 (10 → 1000명):**
 
 | 동시 사용자 | 딜 주문 Avg | 딜 주문 Error | 재고 차감 | 초과 판매 | Pending Max |
 |-----------|-----------|-------------|---------|---------|------------|
@@ -685,22 +583,16 @@ spring:
 | 500명 | 19,101ms | 20.80% | 50개 | ~346건 | 164 |
 | 1000명 | 38,389ms | 20.30% | ~98개 | ~700건 | 42 |
 
-</details>
+![500명 JMeter Summary](images/v1-load-test/before/500-summary.png)
+![500명 CPU](images/v1-load-test/before/500-cpu.png)
+![500명 HikariCP](images/v1-load-test/before/500-hikari.png)
+![1000명 재고 변화](images/v1-load-test/before/1000-stock.png)
 
 ---
 
-<details>
-<summary><strong>Phase 2. 병목 분석 — 왜 성능이 저하되는가?</strong></summary>
+#### 병목 분석
 
-<br>
-
-Phase 1 결과에서 **10명부터 이미 데이터 정합성이 깨지고**, 100명부터 Connection Pool 고갈이 시작되었습니다.
-
-#### 병목 1: Race Condition (재고 정합성 깨짐)
-
-**증상:** 1000명 주문 → 재고 약 98개만 감소 → **약 700건 초과 판매**
-
-**원인:** `StockService.decreaseStock()`이 lock 없는 `findByProductId()`를 사용
+**병목 1: Race Condition (재고 정합성 깨짐)**
 
 ```java
 // lock 없는 조회 — 여러 트랜잭션이 같은 재고를 읽음
@@ -719,11 +611,7 @@ Thread 3: UPDATE quantity = 99   ┘
 결과: 3건 주문 성공, 재고는 1만 감소
 ```
 
-#### 병목 2: Connection Pool 고갈 (@Transactional 안에서 결제)
-
-**증상:** HikariCP Pending 최대 164, Connection Timeout 발생, 모니터링 공백 2분
-
-**원인:** `FakePaymentClient.pay()` (500~1000ms 지연)가 `@Transactional` 안에서 실행
+**병목 2: Connection Pool 고갈 (@Transactional 안에서 결제)**
 
 ```java
 @Transactional  // 트랜잭션 시작 → DB 커넥션 획득
@@ -731,28 +619,19 @@ public OrderResponse createDealOrder(...) {
     stockService.decreaseStock(...);           // 재고 차감
     fakePaymentClient.pay(memberId, amount);   // 500~1000ms 대기 (커넥션 점유 중!)
     order.completePayment(...);                // 결제 완료 처리
-}  // 트랜잭션 종료 → 커넥션 반환 (여기까지 최소 500ms 이상 점유)
+}  // 트랜잭션 종료 → 커넥션 반환
 ```
 
-**Little's Law 분석:**
-```
-최대 TPS = Pool Size / 평균 커넥션 점유 시간
-         = 10 / 0.75s
-         ≈ 13.3 TPS
-
-→ 이론상 초당 13건이 한계. 그 이상은 전부 Pending 대기열에 쌓임.
-```
+Little's Law: `최대 TPS = Pool Size(10) / 평균 커넥션 점유 시간(0.75s) ≈ 13.3 TPS` → 이론상 초당 13건이 한계
 
 </details>
 
 ---
 
 <details>
-<summary><strong>Phase 3. 최적화 적용 — 비관적 락 + 트랜잭션 분리</strong></summary>
+<summary><strong>"비관적 락 + 트랜잭션 분리" — 정합성은 해결, 하지만 성능은 여전히</strong></summary>
 
 <br>
-
-Phase 2에서 데이터로 증명한 2가지 병목만 해결합니다.
 
 #### 최적화 1: 비관적 락 적용 (Race Condition 해결)
 
@@ -769,11 +648,11 @@ Stock stock = stockRepository.findByProductIdWithLock(productId);
 Spring 프록시의 내부 호출 한계를 해결하기 위해 `DealOrderTransactionService`를 별도 빈으로 분리했습니다.
 
 ```java
-// Before: 하나의 @Transactional에서 결제까지 실행
+// Before: 하나의 @Transactional에서 결제까지 실행 → 500~1000ms 커넥션 점유
 @Transactional
 public OrderResponse createDealOrder(...) {
     stockService.decreaseStock(...);
-    fakePaymentClient.pay(...);      // 500~1000ms 커넥션 점유
+    fakePaymentClient.pay(...);
     order.completePayment(...);
 }
 
@@ -790,457 +669,272 @@ public OrderResponse createDealOrder(...) {
 }
 ```
 
-</details>
-
 ---
 
-<details>
-<summary><strong>Phase 4. After — 최적화 후 동일 테스트 재실행</strong></summary>
+#### Before/After 종합 비교
 
-<br>
+| 동시 사용자 | Before 초과 판매 | After 초과 판매 | Before Error | After Error | Before Pending | After Pending |
+|-----------|---------------|---------------|-------------|------------|---------------|--------------|
+| 10명 | 9건 | **0건** | 30% | **0%** | 0 | 0 |
+| 100명 | ~72건 | **0건** | 17% | **0%** | 3 | 16 |
+| 300명 | ~205건 | **0건** | 21.33% | **0%** | 30 | 0 |
+| 500명 | ~346건 | **0건** | 20.80% | **0%** | 164 | **4** |
+| 1000명 | ~700건 | **0건** | 20.30% | **0.50%** | 42 | 0 |
 
-**목적:** 같은 조건에서 테스트를 재실행하여 최적화 효과를 정량적으로 비교
-
-#### 4-1. Smoke Test After (10명)
-
-| API | Avg (ms) | P95 (ms) | Max (ms) | Error % |
-|-----|----------|----------|----------|---------|
-| 로그인 | 554 | 570 | 571 | 0% |
-| 딜 목록 조회 | 89 | 94 | 94 | 0% |
-| 딜 상세 조회 | 72 | 77 | 79 | 0% |
-| **딜 주문** | **969** | **1,116** | **1,187** | **0%** |
-
-| 항목 | Before | After |
-|------|--------|-------|
-| 재고 차감 | 1개 (9건 초과판매) | **10개 (정확)** |
-| 에러율 | 30% | **0%** |
-| HikariCP Pending | 0 | **0** |
-
-![10명 After JMeter](images/v1-load-test/after/10-summary.png)
-![10명 After 재고](images/v1-load-test/after/10-stock.png)
-![10명 After HikariCP](images/v1-load-test/after/10-hikari.png)
-
----
-
-#### 4-2. Load Test After (100명)
-
-| API | Avg (ms) | P95 (ms) | Max (ms) | Error % |
-|-----|----------|----------|----------|---------|
-| 로그인 | 3,033 | 5,180 | 5,478 | 0% |
-| 딜 목록 조회 | 191 | 296 | 309 | 0% |
-| 딜 상세 조회 | 123 | 194 | 210 | 0% |
-| **딜 주문** | **4,255** | **7,367** | **8,122** | **0%** |
-
-| 항목 | Before | After |
-|------|--------|-------|
-| 재고 차감 | 11개 (72건 초과판매) | **100개 (정확)** |
-| 에러율 | 17% | **0%** |
-| HikariCP Pending Max | 3 | **16** |
-| Connection Acquire Time | 250ms | **50ms** |
-
-![100명 After JMeter](images/v1-load-test/after/100-summary.png)
-![100명 After 재고](images/v1-load-test/after/100-stock.png)
-![100명 After HikariCP](images/v1-load-test/after/100-hikari.png)
-
----
-
-#### 4-3. Load Test After (300명)
-
-| API | Avg (ms) | P95 (ms) | Max (ms) | Error % |
-|-----|----------|----------|----------|---------|
-| 로그인 | 8,075 | 14,757 | 15,303 | 0% |
-| 딜 목록 조회 | 389 | 611 | 626 | 0% |
-| 딜 상세 조회 | 231 | 383 | 433 | 0% |
-| **딜 주문** | **11,865** | **21,000** | **23,185** | **0%** |
-
-| 항목 | Before | After |
-|------|--------|-------|
-| 재고 차감 | 31개 (205건 초과판매) | **300개 (정확)** |
-| 에러율 | 21.33% | **0%** |
-| HikariCP Pending Max | 30 | **0** |
-| 모니터링 공백 | 40초 | **없음** |
-
-![300명 After JMeter](images/v1-load-test/after/300-summary.png)
-![300명 After 재고](images/v1-load-test/after/300-stock.png)
-![300명 After HikariCP](images/v1-load-test/after/300-hikari.png)
-
----
-
-#### 4-4. Load Test After (500명)
-
-| API | Avg (ms) | P95 (ms) | Max (ms) | Error % |
-|-----|----------|----------|----------|---------|
-| 로그인 | 12,764 | 22,409 | 24,643 | 0% |
-| 딜 목록 조회 | 604 | 929 | 1,034 | 0% |
-| 딜 상세 조회 | 186 | 392 | 558 | 0% |
-| **딜 주문** | **19,387** | **34,666** | **38,533** | **0%** |
-
-| 항목 | Before | After |
-|------|--------|-------|
-| 재고 차감 | 50개 (346건 초과판매) | **500개 (정확)** |
-| 에러율 | 20.80% | **0%** |
-| HikariCP Pending Max | 164 | **4** |
-| CPU Max | 99.2% | **56.3%** |
-| 모니터링 공백 | 70초 | **없음** |
-
-![500명 After JMeter](images/v1-load-test/after/500-summary.png)
 ![500명 After 재고](images/v1-load-test/after/500-stock.png)
-![500명 After CPU](images/v1-load-test/after/500-cpu.png)
 ![500명 After HikariCP](images/v1-load-test/after/500-hikari.png)
-
----
-
-#### 4-5. Load Test After (1000명)
-
-| API | Avg (ms) | P95 (ms) | Max (ms) | Error % |
-|-----|----------|----------|----------|---------|
-| 로그인 | 24,228 | 43,353 | 47,848 | 0.50% |
-| 딜 목록 조회 | 1,061 | 1,650 | 1,775 | 0% |
-| 딜 상세 조회 | 647 | 1,078 | 1,223 | 0% |
-| **딜 주문** | **38,061** | **68,180** | **76,065** | **0.50%** |
-
-| 항목 | Before | After |
-|------|--------|-------|
-| 재고 차감 | ~98개 (700건 초과판매) | **~1000개 (정확)** |
-| 에러율 | 20.30% | **0.50%** |
-| Connection Timeout | 1 | **5** |
-| 모니터링 공백 | ~2분 | **~2분 (동일)** |
-
-![1000명 After JMeter](images/v1-load-test/after/1000-summary.png)
-![1000명 After 재고](images/v1-load-test/after/1000-stock.png)
-![1000명 After CPU](images/v1-load-test/after/1000-cpu.png)
-![1000명 After HikariCP](images/v1-load-test/after/1000-hikari.png)
-
-> 1000명에서는 데이터 정합성은 해결되었으나, 비관적 락의 순차 처리로 인해 응답시간과 모니터링 공백은 개선되지 않음.
-
-</details>
-
----
-
-<details>
-<summary><strong>Phase 5. 결론 — Before/After 종합 비교 및 V2 스케일아웃 근거</strong></summary>
-
-<br>
-
-#### 재고 정합성 (초과 판매)
-
-| 동시 사용자 | Before 초과 판매 | After 초과 판매 |
-|-----------|---------------|---------------|
-| 10명 | 9건 | **0건** |
-| 100명 | ~72건 | **0건** |
-| 300명 | ~205건 | **0건** |
-| 500명 | ~346건 | **0건** |
-| 1000명 | ~700건 | **0건** |
-
-#### 에러율
-
-| 동시 사용자 | Before | After |
-|-----------|--------|-------|
-| 10명 | 30% | **0%** |
-| 100명 | 17% | **0%** |
-| 300명 | 21.33% | **0%** |
-| 500명 | 20.80% | **0%** |
-| 1000명 | 20.30% | **0.50%** |
-
-#### HikariCP Pending (커넥션 대기)
-
-| 동시 사용자 | Before | After |
-|-----------|--------|-------|
-| 10명 | 0 | **0** |
-| 100명 | 3 | **16** |
-| 300명 | 30 | **0** |
-| 500명 | 164 | **4** |
-| 1000명 | 42 | **0** |
-
-#### 최적화로 해결된 것
 
 | 병목 | 해결 방법 | 효과 |
 |------|---------|------|
 | Race Condition | 비관적 락 (SELECT FOR UPDATE) | 초과 판매 0건 — **데이터 정합성 100% 보장** |
 | Connection Pool 고갈 | 트랜잭션 분리 (결제를 TX 밖으로) | 500명 기준 Pending 164 → 4 **(97% 감소)** |
 
-#### 최적화 후에도 남는 한계 (1000명)
+#### 최적화 후에도 남는 한계
 
-| 한계 | 수치 | 원인 |
+| 한계 | 수치 (1000명 기준) | 원인 |
 |------|------|------|
 | 딜 주문 평균 응답시간 | **38초** | 비관적 락이 1000건을 순차 처리 |
 | Connection Timeout | **5회** | 순차 처리로 인한 대기 시간 누적 |
 | 모니터링 공백 | **약 2분** | 서버 자원 한계 |
 
-비관적 락으로 **데이터 정합성은 완전히 해결**했지만, **처리 성능(응답시간, TPS)은 단일 서버 + 단일 DB의 물리적 한계**입니다. 이 한계를 극복하려면 아키텍처 레벨의 변경이 필요합니다.
-
-#### 다음 단계 — 스케일아웃 전에, 단일 서버를 먼저 최적화한다
-
-비관적 락 + 트랜잭션 분리로 **데이터 정합성과 커넥션 풀 고갈**은 해결했지만, 1000명 기준 딜 주문 평균 응답시간 38초는 여전히 서비스 불가 수준입니다.
-
+비관적 락으로 **데이터 정합성은 완전히 해결**했지만, **처리 성능은 단일 서버 + 단일 DB의 물리적 한계**입니다.
 여기서 바로 서버를 늘리는 것은 **"느린 서버를 3대 띄우는 것"** 에 불과합니다.
 단일 서버에서 할 수 있는 최적화를 모두 시도하고, 그래도 한계가 올 때 비로소 스케일아웃의 근거가 됩니다.
 
-> **V1-b** (현재) → **V1-c** (단일 서버 최적화) → **V1-d** (최적화 후 한계 증명) → **V2** (스케일아웃)
+</details>
+
+---
+
+<details>
+<summary><strong>"쿼리를 91% 줄여도 TPS가 안 변한다?" — N+1 해결과 Caffeine 캐싱</strong></summary>
+
+<br>
+
+> 스케일아웃 전에 단일 서버에서 뽑아낼 수 있는 최대 성능을 먼저 확인한다.
+> 최적화 항목별로 **단일 API 테스트**(100 Threads, Duration 60초)로 효과를 격리 측정한다.
+
+#### 딜 목록 조회 — N+1 쿼리 해결
+
+Hibernate SQL 로그를 분석한 결과, 딜 목록 조회 1회에 **22개 쿼리**가 발생했다.
+
+```
+요청 1회 → 22개 쿼리
+├── SELECT ... FROM deals LIMIT ?, ?              (1개: 딜 목록)
+├── SELECT count(deal_id) FROM deals              (1개: 페이징 count)
+├── SELECT ... FROM stocks WHERE product_id=?     (10개: 딜마다 재고 N+1)
+└── SELECT ... FROM products WHERE product_id=?   (10개: 딜마다 상품 N+1)
+```
+
+QueryDSL JOIN + DTO Projection으로 **22개 → 2개 쿼리**로 통합했다.
+
+```java
+queryFactory
+    .select(Projections.constructor(DealResponse.class, ...))
+    .from(deal)
+    .join(deal.product, product)
+    .leftJoin(stock).on(stock.productId.eq(product.id))
+    .orderBy(deal.createdAt.desc())
+    .offset(pageable.getOffset())
+    .limit(pageable.getPageSize())
+    .fetch();
+```
+
+| 지표 | Before (N+1) | After (JOIN) | 변화 |
+|------|-------------|-------------|------|
+| 쿼리 수 | 22개 | 2개 | **91% 감소** |
+| TPS | 31.4/sec | 30.0/sec | **거의 동일** |
+
+![Baseline JMeter](images/v1-optimization/deal-list/baseline-100-jmeter.png)
+![After JOIN JMeter](images/v1-optimization/deal-list/after-join-100-jmeter.png)
+
+> 쿼리를 91% 줄였는데 TPS가 변하지 않았다. **HikariCP 커넥션 풀(10개)이 진짜 병목**이기 때문이다.
+> 쿼리를 아무리 줄여도 커넥션 10개라는 물리적 한계는 그대로 → **DB 접근 자체를 제거해야 한다.**
+
+---
+
+#### 딜 목록 조회 — Caffeine 로컬 캐시 적용
+
+| 결정 | 이유 |
+|------|------|
+| **Caffeine (로컬 캐시)** 채택 | 단일 서버에서는 JVM 내 캐시가 네트워크 비용 없이 가장 빠름 |
+| Redis 배제 | 다중 서버 간 캐시 일관성이 필요한 V2에서 도입 |
+| TTL 5초 | 재고 변동을 적절히 반영하면서 DB 부하를 줄이는 균형점 |
+
+```java
+@Cacheable(value = "deals", key = "#pageable.pageNumber + '-' + #pageable.pageSize")
+@Transactional(readOnly = true)
+public PageResponse<DealResponse> getDeals(Pageable pageable) {
+    Page<DealResponse> page = dealRepository.findDealsWithStock(pageable);
+    return new PageResponse<>(page);
+}
+```
+
+**100명 테스트:**
+
+| 지표 | Before (JOIN만) | After (JOIN + Cache) | 개선율 |
+|------|----------------|---------------------|-------|
+| Avg 응답시간 | 3,125ms | **23ms** | **99.3% 감소** |
+| TPS | 30.0/sec | **4,037.9/sec** | **134배 증가** |
+
+![Cache 100명 JMeter](images/v1-optimization/deal-list/cache-100-jmeter.png)
+
+**300명으로 부하 증가:**
+
+| 지표 | 100명 | 300명 | 변화 |
+|------|-------|-------|------|
+| TPS | 4,037.9/sec | **1,406.7/sec** | **65% 감소** |
+| CPU Max | 71.5% | 포화 | - |
+
+![Cache 300명 JMeter](images/v1-optimization/deal-list/cache-300-jmeter.png)
+![Cache 100명 CPU](images/v1-optimization/deal-list/cache-100-cpu.png)
+
+> 캐시로 DB 병목은 해결했지만, **새로운 병목 — CPU 2코어.** 300명에서는 컨텍스트 스위칭 오버헤드로 TPS가 오히려 떨어진다.
+
+---
+
+#### 딜 상세 조회 — QueryDSL JOIN + 캐시 적용
+
+LAZY 로딩으로 인한 3개 쿼리를 1개로 통합하고, Caffeine 캐시를 적용했다.
+
+| 지표 | Before (JOIN만) | After (JOIN + Cache) | 개선율 |
+|------|----------------|---------------------|-------|
+| Avg 응답시간 | 67ms | **20ms** | **70% 감소** |
+| TPS | 1,425.4/sec | **4,699.7/sec** | **3.3배 증가** |
+
+![Before JMeter](images/v1-optimization/deal-detail/before-100-jmeter.png)
+![Cache JMeter](images/v1-optimization/deal-detail/cache-100-jmeter.png)
+
+---
+
+#### 딜 주문 — 비관적 락의 물리적 한계
+
+딜 주문은 `SELECT ... FOR UPDATE`로 재고 정합성을 보장하므로 반드시 DB를 거쳐야 하며, 캐싱 대상이 아니다.
+
+| 지표 | 100명 | 300명 | 변화 |
+|------|-------|-------|------|
+| 딜 주문 TPS | 12.9/sec | **12.8/sec** | **변화 없음** |
+| 딜 주문 Avg | 6,824ms | 17,938ms | 대기 시간만 증가 |
+
+![주문 100명 JMeter](images/v1-optimization/deal-order/100-jmeter.png)
+![주문 100명 재고](images/v1-optimization/deal-order/100-stock.png)
+
+> 100명이든 300명이든 TPS ~12.9로 동일. **단일 MySQL row lock은 초당 ~13건이 물리적 한계.**
+
+---
+
+#### 최적화 종합
+
+| API | Before Avg | Before TPS | After Avg | After TPS | 개선율 |
+|-----|-----------|-----------|----------|----------|-------|
+| 딜 목록 조회 | 2,989ms | 31.4 | **23ms** | **4,037.9** | **130배** |
+| 딜 상세 조회 | 67ms | 1,425.4 | **20ms** | **4,699.7** | **3.3배** |
+| 딜 주문 | 6,824ms | 12.9 | 6,824ms | 12.9 | **변화 없음** |
+
+조회 API는 극적으로 개선했지만, 주문 API는 **비관적 락이라는 구조적 한계** 때문에 코드 레벨로는 더 이상 개선할 수 없다.
 
 </details>
 
 ---
 
 <details>
-<summary><strong>Phase 6. V1-c 계획 — 단일 서버 최적화 (스케일아웃 전 필수 단계)</strong></summary>
+<summary><strong>"100명은 버티지만 300명은 무너진다" — 시나리오 테스트와 단일 서버의 한계</strong></summary>
 
 <br>
 
-> 서버를 늘리기 전에, 한 대의 서버에서 뽑아낼 수 있는 최대 성능을 먼저 확인한다.
-
-#### 테스트 전략 — 단일 API 테스트 vs 시나리오 테스트
-
-| | 단일 API 테스트 | 시나리오 테스트 |
-|--|----------------|---------------|
-| **방식** | 하나의 API만 집중 호출 | 실제 사용 흐름대로 여러 API 순차 호출 |
-| **목적** | 특정 최적화의 **효과를 격리**해서 측정 | 전체 서비스가 **트래픽을 버티는지** 종합 측정 |
-| **언제** | 최적화 항목 적용 직후 Before/After 비교 | 모든 최적화 완료 후 최종 검증 |
-
-**원칙:** 최적화 항목별로 **단일 API 테스트**로 효과를 격리 측정하고, 전체 최적화 완료 후 **시나리오 테스트**로 종합 검증한다.
-
----
-
-#### Step 1. Baseline — 최적화 전 단일 API 성능 측정
-
-**목적:** 각 API의 개별 성능을 기록해두어, 이후 최적화마다 정확한 Before/After 비교 기준을 확보
-
-**테스트 방식:** 단일 API 테스트 (API별 독립 측정)
-
-| 테스트 | API | 동시 사용자 | Duration | 측정 항목 |
-|--------|-----|-----------|----------|----------|
-| Baseline-1 | `GET /api/deals` | 500명 | 60초 | Avg, P95, P99, TPS |
-| Baseline-2 | `GET /api/deals/{id}` | 500명 | 60초 | Avg, P95, P99, TPS |
-| Baseline-3 | `POST /api/deals/{id}/order` | 500명 | 60초 | Avg, P95, P99, TPS, 에러율 |
-
-> 시나리오 테스트 Baseline은 Phase 4 결과(500명: 19s avg)를 그대로 사용한다.
-
----
-
-#### Step 2. Slow Query 분석 + 인덱싱
-
-**목적:** DB 레벨 병목을 가장 먼저 제거한다. 인덱스 하나가 응답시간을 수십 배 단축할 수 있다.
-
-**작업 내용:**
+> 단일 API 테스트에서는 각 API가 최대 성능을 보여줬지만, 실제 서비스는 **로그인 + 조회 + 주문이 동시에 발생**한다.
+> 모든 최적화를 적용한 상태에서 시나리오 테스트로 최종 검증한다.
 
 ```
-1. MySQL Slow Query Log 활성화 (long_query_time: 1s)
-2. Step 1의 Baseline 테스트를 재실행하며 Slow Query 수집
-3. EXPLAIN ANALYZE로 실행 계획 분석
-4. 필요한 인덱스 추가 (WHERE, JOIN, ORDER BY 대상 컬럼)
-```
-
-**예상 인덱싱 대상:**
-
-| 쿼리 | 예상 병목 | 해결 |
-|------|----------|------|
-| `SELECT ... FROM stocks WHERE product_id = ?` | product_id 인덱스 확인 | 인덱스 추가/검토 |
-| `SELECT ... FROM deals WHERE status = ? AND ...` | 시간 범위 풀 스캔 | 복합 인덱스 (status, start_at, end_at) |
-| `SELECT ... FROM deal_orders WHERE member_id = ?` | member_id 풀 스캔 | 인덱스 추가 |
-
-**검증 테스트:** 단일 API 테스트
-
-| 테스트 | API | 비교 대상 |
-|--------|-----|----------|
-| Index-1 | `GET /api/deals` | Baseline-1과 비교 |
-| Index-2 | `GET /api/deals/{id}` | Baseline-2와 비교 |
-| Index-3 | `POST /api/deals/{id}/order` | Baseline-3과 비교 |
-
-> 인덱싱만으로 얼마나 개선되는지 격리 측정. 다른 변수는 건드리지 않는다.
-
----
-
-#### Step 3. HikariCP 커넥션 풀 튜닝
-
-**목적:** 트랜잭션 분리 후에도 남아있는 커넥션 대기(Pending)를 최소화
-
-**작업 내용:**
-
-```
-1. maximum-pool-size 조정 (기본값 10 → 서버 스펙 기반 산정)
-2. minimum-idle 설정으로 유휴 커넥션 유지
-3. connection-timeout, max-lifetime 최적화
-```
-
-**산정 기준:**
-```
-Pool Size = (core_count * 2) + effective_spindle_count
-         = (2 * 2) + 1
-         = 5 (최소) ~ 20 (여유)
-```
-
-> HikariCP 공식 권장: 적은 커넥션으로도 높은 처리량 가능. 무조건 늘리면 오히려 컨텍스트 스위칭 비용 증가.
-
-**검증 테스트:** 단일 API 테스트 — **주문 API만 테스트**
-
-| 테스트 | API | 왜 이 API만? |
-|--------|-----|-------------|
-| Pool-1 | `POST /api/deals/{id}/order` | 커넥션을 가장 오래 점유하는 API. 조회 API는 커넥션 점유 시간이 짧아 풀 튜닝 효과가 미미 |
-
-**측정 지표:** HikariCP Active/Pending/Idle, Connection Acquire Time, 주문 응답시간
-
----
-
-#### Step 4. Tomcat 스레드 풀 튜닝
-
-**목적:** 동시 요청 처리 능력을 서버 자원에 맞게 최적화
-
-**작업 내용:**
-
-```
-1. server.tomcat.threads.max 조정 (기본값 200)
-2. server.tomcat.threads.min-spare 조정 (기본값 10)
-3. server.tomcat.accept-count 조정 (대기 큐 크기)
-4. 스레드 수와 커넥션 풀 크기의 균형점 탐색
-```
-
-**주의:** vCPU 2EA 환경에서 스레드를 무한정 늘리면 컨텍스트 스위칭 + 메모리 오버헤드로 오히려 성능 저하.
-
-**검증 테스트:** 단일 API 테스트 — **주문 API로 여러 스레드 설정 비교**
-
-| 테스트 | threads.max | 비교 |
-|--------|------------|------|
-| Thread-A | 100 | 기본(200) 대비 |
-| Thread-B | 200 (기본) | 기준 |
-| Thread-C | 50 | 기본(200) 대비 |
-
-> 같은 부하에서 스레드 수만 바꿔가며 **최적 설정을 탐색**한다.
-
-**측정 지표:** JVM Threads (Live/Peak), CPU Usage, 응답시간, TPS
-
----
-
-#### Step 5. 로컬 캐싱 (Caffeine Cache)
-
-**목적:** 반복 조회되는 데이터를 캐싱하여 DB 부하를 줄인다
-
-**캐싱 대상:**
-
-| API | 캐싱 이유 | TTL |
-|-----|----------|-----|
-| `GET /api/deals` | 모든 유저가 동일한 목록 조회, 변경 빈도 낮음 | 5~10초 |
-| `GET /api/deals/{id}` | 동일 딜을 수백 명이 동시 조회 | 3~5초 |
-
-**왜 Redis가 아닌 Caffeine인가?**
-- 단일 서버 환경에서는 **JVM 내 로컬 캐시가 네트워크 비용 없이 가장 빠름**
-- Redis는 다중 서버 간 캐시 일관성이 필요할 때 도입 (V2에서 검토)
-
-**주의:** 재고 수량은 캐싱하지 않음 (실시간 정합성 필요)
-
-**검증 테스트:** 단일 API 테스트 — **조회 API만 테스트**
-
-| 테스트 | API | 왜 이 API만? |
-|--------|-----|-------------|
-| Cache-1 | `GET /api/deals` | 캐시 적용 대상 |
-| Cache-2 | `GET /api/deals/{id}` | 캐시 적용 대상 |
-
-> 주문 API는 캐싱 대상이 아니므로 테스트하지 않는다.
-
-**측정 지표:** Cache Hit Rate, DB 쿼리 수, 딜 조회 응답시간, TPS
-
----
-
-#### Step 6. 종합 검증 — 시나리오 테스트
-
-**목적:** Step 2~5의 모든 최적화를 적용한 상태에서, Phase 1~4와 동일한 시나리오 테스트를 실행하여 **전체 서비스 성능을 종합 비교**
-
-**테스트 방식:** 시나리오 테스트 (Phase 1~4와 동일한 흐름)
-
-```
-1. 로그인 (Once Only Controller)
-2. 전원 로그인 완료 대기 (Synchronizing Timer)
-3. 딜 목록 조회 GET /api/deals
-4. 딜 상세 조회 GET /api/deals/{id}
+1. 로그인 POST /api/auth/login     (Once Only Controller — 스레드당 1회)
+2. 전원 로그인 완료 대기             (Synchronizing Timer)
+3. 딜 목록 조회 GET /api/deals      ← Think Time 1~3초 (Uniform Random Timer)
+4. 딜 상세 조회 GET /api/deals/{id} ← Think Time 1~3초
 5. 딜 주문 POST /api/deals/{id}/order
 ```
 
-| 동시 사용자 | 비교 대상 (Phase 4 After) |
-|-----------|------------------------|
-| 100명 | Avg 4,255ms, P95 7,367ms, Error 0% |
-| 300명 | Avg 11,865ms, P95 21,000ms, Error 0% |
-| 500명 | Avg 19,387ms, P95 34,666ms, Error 0% |
-| 1000명 | Avg 38,061ms, P95 68,180ms, Error 0.50% |
+---
 
-> 단일 API 테스트에서는 각각 빨라졌어도, **로그인 + 조회 + 주문이 동시에 걸리면** 다른 결과가 나올 수 있다. 그래서 시나리오 테스트로 최종 검증한다.
+#### 100명 — SLO 전면 충족
+
+| API | Avg (ms) | Error % | TPS |
+|-----|----------|---------|-----|
+| 로그인 | 189 | 0% | 14.8/sec |
+| 딜 목록 조회 | **21** | 0% | 11.6/sec |
+| 딜 상세 조회 | **153** | 0% | 11.7/sec |
+| 딜 주문 | **945** | 0% | 11.4/sec |
+
+| 인프라 | 값 |
+|-------|-----|
+| CPU Max | 74.5% |
+| Connection Timeout | 7 |
+| 재고 | 100,000 → **99,400** (600건 정확 차감) |
+
+![100명 시나리오 JMeter](images/v1-optimization/scenario/100-jmeter.png)
+![100명 시나리오 재고](images/v1-optimization/scenario/100-stock.png)
+![100명 시나리오 CPU](images/v1-optimization/scenario/100-cpu.png)
+![100명 시나리오 HikariCP](images/v1-optimization/scenario/100-hikari.png)
+
+> 딜 목록 21ms, 딜 상세 153ms, 딜 주문 945ms — 모두 SLO 이내. 100명까지는 단일 서버로 안정적이다.
 
 ---
 
-#### 전체 흐름 요약
+#### 300명 — SLO 전면 위반
 
-```
-Step 1. Baseline (단일 API)     → 각 API의 개별 성능 기록
-  ↓
-Step 2. 인덱싱 (단일 API)       → 인덱싱 효과만 격리 측정
-  ↓
-Step 3. 커넥션 풀 (단일 API)    → 주문 API에서 풀 튜닝 효과 측정
-  ↓
-Step 4. 스레드 풀 (단일 API)    → 여러 설정 비교하여 최적값 탐색
-  ↓
-Step 5. 캐싱 (단일 API)         → 조회 API에서 캐싱 효과 측정
-  ↓
-Step 6. 종합 검증 (시나리오)     → 모든 최적화 적용 후 전체 성능 비교
-```
+| API | Avg (ms) | Error % | TPS |
+|-----|----------|---------|-----|
+| 로그인 | **2,151** | 0% | 29.3/sec |
+| 딜 목록 조회 | **1,214** | 0% | 13.7/sec |
+| 딜 상세 조회 | **5,447** | 0% | 12.9/sec |
+| 딜 주문 | **7,196** | 0% | 12.3/sec |
 
-</details>
+| 인프라 | 값 |
+|-------|-----|
+| CPU Max | **0.7%** (처리를 못하고 있음) |
+| HikariCP Active | **0** (커넥션 획득 자체가 안 됨) |
+| 재고 | 100,000 → **~99,270** (극소량 차감) |
+
+![300명 시나리오 JMeter](images/v1-optimization/scenario/300-jmeter.png)
+![300명 시나리오 재고](images/v1-optimization/scenario/300-stock.png)
+![300명 시나리오 CPU](images/v1-optimization/scenario/300-cpu.png)
+![300명 시나리오 HikariCP](images/v1-optimization/scenario/300-hikari.png)
 
 ---
 
-<details>
-<summary><strong>Phase 7. V1-d 계획 — 최적화 후 한계 증명 (스케일아웃 근거 확보)</strong></summary>
+#### 왜 300명에서 무너지는가?
 
-<br>
+| API | 100명 Avg | 300명 Avg | 악화 |
+|-----|-----------|-----------|------|
+| 딜 목록 조회 | 21ms | **1,214ms** | **58배** |
+| 딜 상세 조회 | 153ms | **5,447ms** | **36배** |
+| 딜 주문 | 945ms | **7,196ms** | 7.6배 |
 
-> Phase 6 종합 검증에서 성능 개선을 확인한 뒤, 부하를 더 올려서 단일 서버의 한계점을 찾는다.
+**핵심 원인: 커넥션 풀 경합 + 직렬 파이프라인 효과**
 
-#### 목적
+1. **주문 API가 커넥션을 독점한다** — `SELECT FOR UPDATE`로 한 번에 1건만 처리. 10개 커넥션이 락 대기에 묶인다.
+2. **조회 API도 커넥션을 못 받는다** — 캐시 MISS 시 DB 커넥션이 필요한데, 커넥션이 모두 주문에 점유당해 대기열에 갇힌다.
+3. **파이프라인 전체가 누적 지연된다** — 앞 단계가 느려지면 뒤 단계도 밀린다.
 
-- 최적화된 단일 서버의 **새로운 성능 천장** 측정
-- "여기까지가 한 대의 한계"를 **데이터로 증명**
-- "왜 서버를 늘려야 하는가?"에 대한 **정량적 근거 확보**
+**증거:** CPU 0.7%(처리를 못하는 것), HikariCP Active 0(커넥션 획득 불가), 재고 거의 미차감(주문 미처리)
 
-#### 테스트 방식 — 시나리오 테스트 (한계까지 부하 증가)
+---
 
-| 동시 사용자 | 목적 |
-|-----------|------|
-| 1000명 | Phase 4 대비 개선 확인 |
-| 1500명 | 새로운 부하 구간 탐색 |
-| 2000명 | 한계점 도달 여부 확인 |
-| 3000명 | 서비스 불가 시점 확인 |
+#### 결론 — 단일 서버의 세 가지 물리적 한계
 
-**서비스 불가 기준:**
-- 평균 응답시간 > 10초
-- 에러율 > 5%
-- Connection Timeout 다수 발생
-- 모니터링 공백 발생
+| 한계 | 증거 | 원인 |
+|------|------|------|
+| **CPU 2코어** | 캐시 적용 후 100명 CPU 71.5%, 300명에서 TPS 하락 | 컨텍스트 스위칭 오버헤드 |
+| **비관적 락 직렬화** | 주문 TPS ~12.9 고정 (스레드 수 무관) | 단일 MySQL row lock |
+| **커넥션 풀 10개 공유** | 300명 시나리오에서 전체 API 응답시간 폭증 | 주문이 커넥션 독점 → 조회까지 연쇄 지연 |
 
-#### 예상 결과
+이 세 가지는 **코드가 아니라 인프라의 제약**이다. 캐시, JOIN, 트랜잭션 분리는 이미 적용했고, 남은 병목은 **서버 한 대의 물리적 자원**과 **단일 DB의 락 구조**다.
 
-```
-Phase 4 (최적화 전)              Phase 7 (최적화 후)
-─────────────────              ─────────────────
-500명: 19s avg, 0% error     →  500명: ?s avg, 0% error     ← 개선 확인
-1000명: 38s avg, 0.5% error  →  1000명: ?s avg, ?% error    ← 개선 확인
-                                 1500명: ?s avg, ?% error    ← 새로운 구간
-                                 2000명: ?s avg, ?% error    ← 한계점?
-                                 3000명: ?s avg, ?% error    ← 서비스 불가?
-```
-
-#### 결론 형태 (예시)
-
-> "단일 서버(vCPU 2EA, 8GB) 환경에서 인덱싱, 커넥션 풀 튜닝, 스레드 풀 튜닝, 로컬 캐싱을 적용한 결과,
-> **동시 1500명까지는 평균 응답시간 Xs, 에러율 0%로 안정적**이나,
-> **2000명부터 CPU 100%, Connection Timeout이 발생하여 서비스 불가** 상태에 도달.
-> 이 시점이 **스케일아웃(V2)의 시작점**이다."
-
-#### V2 스케일아웃 방향 (Phase 7 이후)
+#### V2 스케일아웃 방향
 
 | 한계 | V2 해결 방향 |
 |------|------------|
-| 단일 서버 처리량 한계 | 앱 서버 3대 + NCP Load Balancer |
-| 비관적 락 순차 처리 병목 | Redis Lua Script로 atomic 재고 차감 (DB 락 제거) |
-| 세션 불일치 | Spring Session + Redis로 세션 외부화 |
-| 장애 전파 | 결제 실패 시 재고 복구를 이벤트 기반으로 개선 |
+| CPU 2코어 | 앱 서버 **3대** + Nginx 로드밸런서 |
+| 비관적 락 TPS 한계 | **Redis Lua Script**로 atomic 재고 차감 |
+| 커넥션 풀 경합 | 서버 3대 = 커넥션 **30개** |
+| 세션 불일치 | **Spring Session + Redis** |
 
 </details>
-
-
