@@ -66,3 +66,5 @@ tasks.named('test') {
 clean {
     delete file('src/main/generated')
 }
+
+// V2 스케일아웃 배포 트리거용 주석
