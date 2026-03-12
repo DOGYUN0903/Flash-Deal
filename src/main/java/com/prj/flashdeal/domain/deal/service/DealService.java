@@ -44,14 +44,10 @@ public class DealService {
         return new PageResponse<>(page);
     }
 
-    @Cacheable(value = "deal", key = "#dealId")
     @Transactional(readOnly = true)
     public DealResponse getDeal(Long dealId) {
-        DealResponse response = dealRepository.findDealWithStock(dealId);
-        if (response == null) {
-            throw new DealException(DealErrorCode.DEAL_NOT_FOUND);
-        }
-        return response;
+        Deal deal = findDeal(dealId);
+        return DealResponse.from(deal, stockService.getStock(deal.getProduct().getId()));
     }
 
     // ---------------- 딜 주문 ----------------
