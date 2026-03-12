@@ -151,6 +151,8 @@ jobs:
             NCP_ACCESS_KEY=${{ secrets.NCP_ACCESS_KEY }}
             NCP_SECRET_KEY=${{ secrets.NCP_SECRET_KEY }}
             NCP_DEFAULT_IMAGE_URL=${{ secrets.NCP_DEFAULT_IMAGE_URL }}
+            REDIS_HOST=${{ secrets.REDIS_HOST }}
+            REDIS_PORT=${{ secrets.REDIS_PORT }}
             SPRING_PROFILES_ACTIVE=prod
             EOF
 
@@ -205,6 +207,8 @@ jobs:
             NCP_ACCESS_KEY=${{ secrets.NCP_ACCESS_KEY }}
             NCP_SECRET_KEY=${{ secrets.NCP_SECRET_KEY }}
             NCP_DEFAULT_IMAGE_URL=${{ secrets.NCP_DEFAULT_IMAGE_URL }}
+            REDIS_HOST=${{ secrets.REDIS_HOST }}
+            REDIS_PORT=${{ secrets.REDIS_PORT }}
             SPRING_PROFILES_ACTIVE=prod
             EOF
 
@@ -259,6 +263,8 @@ jobs:
             NCP_ACCESS_KEY=${{ secrets.NCP_ACCESS_KEY }}
             NCP_SECRET_KEY=${{ secrets.NCP_SECRET_KEY }}
             NCP_DEFAULT_IMAGE_URL=${{ secrets.NCP_DEFAULT_IMAGE_URL }}
+            REDIS_HOST=${{ secrets.REDIS_HOST }}
+            REDIS_PORT=${{ secrets.REDIS_PORT }}
             SPRING_PROFILES_ACTIVE=prod
             EOF
 
