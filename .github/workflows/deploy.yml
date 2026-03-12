@@ -1,5 +1,6 @@
 # workflow 이름
 name: flashdeal-ci/cd
+# Redis session deploy trigger comment
 
 on:
   push:
