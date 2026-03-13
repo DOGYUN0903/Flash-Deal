@@ -11,9 +11,11 @@ import com.prj.flashdeal.domain.stock.exception.StockErrorCode;
 import com.prj.flashdeal.domain.stock.exception.StockException;
 import com.prj.flashdeal.domain.stock.repository.StockRepository;
 
+import lombok.extern.slf4j.Slf4j;
 import lombok.RequiredArgsConstructor;
 
 @Service
+@Slf4j
 @RequiredArgsConstructor
 public class RedisStockScriptService {
 
@@ -27,6 +29,7 @@ public class RedisStockScriptService {
     private final DefaultRedisScript<Long> increaseScript = createScript("lua/increase_stock.lua");
 
     public long decrease(Long productId, int quantity) {
+        long start = System.nanoTime();
         String key = buildStockKey(productId);
         ensureStockInitialized(productId, key);
 
@@ -43,10 +46,18 @@ public class RedisStockScriptService {
             throw new StockException(StockErrorCode.OUT_OF_STOCK);
         }
 
+        log.info(
+            "deal-order timing redisDecrease productId={} quantity={} remaining={} totalMs={}",
+            productId,
+            quantity,
+            result,
+            toMillis(System.nanoTime() - start)
+        );
         return result;
     }
 
     public long increase(Long productId, int quantity) {
+        long start = System.nanoTime();
         String key = buildStockKey(productId);
         ensureStockInitialized(productId, key);
 
@@ -60,6 +71,13 @@ public class RedisStockScriptService {
             throw new StockException(StockErrorCode.STOCK_NOT_FOUND);
         }
 
+        log.info(
+            "deal-order timing redisIncrease productId={} quantity={} remaining={} totalMs={}",
+            productId,
+            quantity,
+            result,
+            toMillis(System.nanoTime() - start)
+        );
         return result;
     }
 
@@ -83,5 +101,9 @@ public class RedisStockScriptService {
         script.setLocation(new ClassPathResource(path));
         script.setResultType(Long.class);
         return script;
+    }
+
+    private static long toMillis(long nanos) {
+        return nanos / 1_000_000;
     }
 }

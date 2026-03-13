@@ -22,9 +22,11 @@ import com.prj.flashdeal.domain.product.service.ProductService;
 import com.prj.flashdeal.domain.stock.service.StockService;
 import com.prj.flashdeal.global.response.PageResponse;
 
+import lombok.extern.slf4j.Slf4j;
 import lombok.RequiredArgsConstructor;
 
 @Service
+@Slf4j
 @RequiredArgsConstructor
 public class DealService {
 
@@ -56,16 +58,29 @@ public class DealService {
     }
 
     public OrderResponse createDealOrder(Long memberId, Long dealId, DealOrderRequest request) {
+        long start = System.nanoTime();
         DealOrderContext context = dealOrderTxService.validateAndDecreaseStock(memberId, dealId, request);
+        long reservedAt = System.nanoTime();
 
         try {
             fakePaymentClient.pay(context.memberId(), request.getAmount());
+            long paidAt = System.nanoTime();
+            OrderResponse response = dealOrderTxService.completeOrder(context, request);
+            long completedAt = System.nanoTime();
+            log.info(
+                "deal-order timing createDealOrder dealId={} productId={} reserveMs={} paymentMs={} completeOrderMs={} totalMs={}",
+                dealId,
+                context.productId(),
+                toMillis(reservedAt - start),
+                toMillis(paidAt - reservedAt),
+                toMillis(completedAt - paidAt),
+                toMillis(completedAt - start)
+            );
+            return response;
         } catch (Exception e) {
             dealOrderTxService.restoreStock(context.productId(), request.getQuantity());
             throw e;
         }
-
-        return dealOrderTxService.completeOrder(context, request);
     }
 
     @Transactional
@@ -86,5 +101,9 @@ public class DealService {
         Deal saved = dealRepository.save(deal);
         dealCacheService.evictDealListMetadata(0, 10);
         return DealResponse.from(saved, stockService.getStock(product.getId()));
+    }
+
+    private static long toMillis(long nanos) {
+        return nanos / 1_000_000;
     }
 }

@@ -18,9 +18,11 @@ import com.prj.flashdeal.domain.product.entity.Product;
 import com.prj.flashdeal.domain.product.service.ProductService;
 import com.prj.flashdeal.domain.stock.service.RedisStockScriptService;
 
+import lombok.extern.slf4j.Slf4j;
 import lombok.RequiredArgsConstructor;
 
 @Service
+@Slf4j
 @RequiredArgsConstructor
 public class DealOrderTransactionService {
 
@@ -34,13 +36,26 @@ public class DealOrderTransactionService {
      * TX1: 딜 검증 후 Redis Lua Script로 재고를 예약 차감하고, 별도 트랜잭션에서 DB 재고를 반영한다.
      */
     public DealOrderContext validateAndDecreaseStock(Long memberId, Long dealId, DealOrderRequest request) {
+        long start = System.nanoTime();
         DealOrderContext context = dealOrderStockTxService.validateOrderContext(memberId, dealId, request);
+        long validatedAt = System.nanoTime();
         boolean reserved = false;
 
         try {
             redisStockScriptService.decrease(context.productId(), context.quantity());
             reserved = true;
+            long reservedAt = System.nanoTime();
             dealOrderStockTxService.applyReservedStock(context.productId(), context.quantity());
+            long dbAppliedAt = System.nanoTime();
+            log.info(
+                "deal-order timing validateAndDecreaseStock dealId={} productId={} validateMs={} redisReserveMs={} dbApplyMs={} totalMs={}",
+                dealId,
+                context.productId(),
+                toMillis(validatedAt - start),
+                toMillis(reservedAt - validatedAt),
+                toMillis(dbAppliedAt - reservedAt),
+                toMillis(dbAppliedAt - start)
+            );
             return context;
         } catch (RuntimeException e) {
             if (reserved) {
@@ -60,6 +75,7 @@ public class DealOrderTransactionService {
      */
     @Transactional
     public OrderResponse completeOrder(DealOrderContext context, DealOrderRequest request) {
+        long start = System.nanoTime();
         Member member = memberService.getMember(context.memberId());
         Product product = productService.findCartableProduct(context.productId());
 
@@ -75,7 +91,14 @@ public class DealOrderTransactionService {
         payment.completePayment(PaymentMethod.TOSS);
         order.completePayment(payment);
 
-        return OrderResponse.from(orderService.saveOrder(order));
+        OrderResponse response = OrderResponse.from(orderService.saveOrder(order));
+        log.info(
+            "deal-order timing completeOrder dealId={} productId={} totalMs={}",
+            context.dealId(),
+            context.productId(),
+            toMillis(System.nanoTime() - start)
+        );
+        return response;
     }
 
     static DealException dealNotFound(Long dealId) {
@@ -86,4 +109,8 @@ public class DealOrderTransactionService {
         Long memberId, Long dealId, Long productId,
         int discountPrice, int quantity
     ) {}
+
+    private static long toMillis(long nanos) {
+        return nanos / 1_000_000;
+    }
 }

@@ -12,9 +12,11 @@ import com.prj.flashdeal.domain.stock.exception.StockErrorCode;
 import com.prj.flashdeal.domain.stock.exception.StockException;
 import com.prj.flashdeal.domain.stock.repository.StockRepository;
 
+import lombok.extern.slf4j.Slf4j;
 import lombok.RequiredArgsConstructor;
 
 @Service
+@Slf4j
 @RequiredArgsConstructor
 public class StockService {
 
@@ -65,6 +67,7 @@ public class StockService {
 
     @Transactional
     public void decreaseReservedStock(Long productId, int quantity) {
+        long start = System.nanoTime();
         long updated = stockRepository.decreaseQuantity(productId, quantity);
         if (updated == 0) {
             throw new StockException(StockErrorCode.OUT_OF_STOCK);
@@ -75,6 +78,13 @@ public class StockService {
         if (stock.getQuantity() == 0) {
             stock.getProduct().markSoldOut();
         }
+        log.info(
+            "deal-order timing decreaseReservedStock productId={} quantity={} remaining={} totalMs={}",
+            productId,
+            quantity,
+            stock.getQuantity(),
+            toMillis(System.nanoTime() - start)
+        );
     }
 
     /**
@@ -105,6 +115,7 @@ public class StockService {
 
     @Transactional
     public void increaseReservedStock(Long productId, int quantity) {
+        long start = System.nanoTime();
         long updated = stockRepository.increaseQuantity(productId, quantity);
         if (updated == 0) {
             throw new StockException(StockErrorCode.STOCK_NOT_FOUND);
@@ -113,6 +124,13 @@ public class StockService {
         Stock stock = stockRepository.findByProductId(productId)
             .orElseThrow(() -> new StockException(StockErrorCode.STOCK_NOT_FOUND));
         stock.getProduct().markOnSale();
+        log.info(
+            "deal-order timing increaseReservedStock productId={} quantity={} remaining={} totalMs={}",
+            productId,
+            quantity,
+            stock.getQuantity(),
+            toMillis(System.nanoTime() - start)
+        );
     }
 
     /**
@@ -146,6 +164,10 @@ public class StockService {
     @Transactional(readOnly = true)
     public Map<Long, Integer> getStocks(List<Long> productIds) {
         return stockRepository.findQuantitiesByProductIds(productIds);
+    }
+
+    private static long toMillis(long nanos) {
+        return nanos / 1_000_000;
     }
 
 }
