@@ -61,7 +61,7 @@ public class DealService {
         try {
             fakePaymentClient.pay(context.memberId(), request.getAmount());
         } catch (Exception e) {
-            dealOrderTxService.restoreStockWithRedisLock(context.dealId(), context.productId(), request.getQuantity());
+            dealOrderTxService.restoreStock(context.productId(), request.getQuantity());
             throw e;
         }
 

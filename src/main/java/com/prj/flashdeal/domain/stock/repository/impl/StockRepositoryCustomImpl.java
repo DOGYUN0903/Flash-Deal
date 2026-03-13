@@ -61,4 +61,25 @@ public class StockRepositoryCustomImpl implements StockRepositoryCustom {
                 tuple -> tuple.get(stock.quantity)
             ));
     }
+
+    @Override
+    public long decreaseQuantity(Long productId, int quantity) {
+        return queryFactory
+            .update(stock)
+            .set(stock.quantity, stock.quantity.subtract(quantity))
+            .where(
+                stock.product.id.eq(productId),
+                stock.quantity.goe(quantity)
+            )
+            .execute();
+    }
+
+    @Override
+    public long increaseQuantity(Long productId, int quantity) {
+        return queryFactory
+            .update(stock)
+            .set(stock.quantity, stock.quantity.add(quantity))
+            .where(stock.product.id.eq(productId))
+            .execute();
+    }
 }

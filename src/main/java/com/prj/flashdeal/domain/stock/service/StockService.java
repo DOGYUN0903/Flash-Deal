@@ -63,6 +63,20 @@ public class StockService {
         }
     }
 
+    @Transactional
+    public void decreaseReservedStock(Long productId, int quantity) {
+        long updated = stockRepository.decreaseQuantity(productId, quantity);
+        if (updated == 0) {
+            throw new StockException(StockErrorCode.OUT_OF_STOCK);
+        }
+
+        Stock stock = stockRepository.findByProductId(productId)
+            .orElseThrow(() -> new StockException(StockErrorCode.STOCK_NOT_FOUND));
+        if (stock.getQuantity() == 0) {
+            stock.getProduct().markSoldOut();
+        }
+    }
+
     /**
      * 재고 복구 — 주문 취소 시 호출.
      * 재고가 다시 생기면 상품을 ON_SALE로 변경.
@@ -86,6 +100,18 @@ public class StockService {
             .orElseThrow(() -> new StockException(StockErrorCode.STOCK_NOT_FOUND));
 
         stock.increase(quantity);
+        stock.getProduct().markOnSale();
+    }
+
+    @Transactional
+    public void increaseReservedStock(Long productId, int quantity) {
+        long updated = stockRepository.increaseQuantity(productId, quantity);
+        if (updated == 0) {
+            throw new StockException(StockErrorCode.STOCK_NOT_FOUND);
+        }
+
+        Stock stock = stockRepository.findByProductId(productId)
+            .orElseThrow(() -> new StockException(StockErrorCode.STOCK_NOT_FOUND));
         stock.getProduct().markOnSale();
     }
 

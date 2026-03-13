@@ -1,7 +1,5 @@
 package com.prj.flashdeal.domain.deal.service;
 
-import java.time.Duration;
-
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -18,51 +16,43 @@ import com.prj.flashdeal.domain.payment.entity.Payment;
 import com.prj.flashdeal.domain.payment.entity.PaymentMethod;
 import com.prj.flashdeal.domain.product.entity.Product;
 import com.prj.flashdeal.domain.product.service.ProductService;
-import com.prj.flashdeal.domain.stock.service.RedisLockService;
+import com.prj.flashdeal.domain.stock.service.RedisStockScriptService;
 
 import lombok.RequiredArgsConstructor;
 
-/**
- * 딜 주문의 트랜잭션을 분리하기 위한 서비스.
- *
- * DealService에서 내부 호출 시 @Transactional 프록시가 동작하지 않으므로
- * 별도 빈으로 분리하여 TX 경계를 보장한다.
- */
 @Service
 @RequiredArgsConstructor
 public class DealOrderTransactionService {
 
-    private static final Duration STOCK_LOCK_WAIT_TIME = Duration.ofSeconds(2);
-    private static final Duration STOCK_LOCK_LEASE_TIME = Duration.ofSeconds(5);
-
-    private final RedisLockService redisLockService;
+    private final RedisStockScriptService redisStockScriptService;
     private final DealOrderStockTransactionService dealOrderStockTxService;
     private final MemberService memberService;
     private final ProductService productService;
     private final OrderService orderService;
 
     /**
-     * TX1: Redis 분산 락으로 재고 차감 진입을 제어한 뒤, 별도 트랜잭션에서 검증 + 재고 차감.
+     * TX1: 딜 검증 후 Redis Lua Script로 재고를 예약 차감하고, 별도 트랜잭션에서 DB 재고를 반영한다.
      */
     public DealOrderContext validateAndDecreaseStock(Long memberId, Long dealId, DealOrderRequest request) {
-        return redisLockService.executeWithLock(
-            buildStockLockKey(dealId),
-            STOCK_LOCK_WAIT_TIME,
-            STOCK_LOCK_LEASE_TIME,
-            () -> dealOrderStockTxService.validateAndDecreaseStock(memberId, dealId, request)
-        );
+        DealOrderContext context = dealOrderStockTxService.validateOrderContext(memberId, dealId, request);
+        boolean reserved = false;
+
+        try {
+            redisStockScriptService.decrease(context.productId(), context.quantity());
+            reserved = true;
+            dealOrderStockTxService.applyReservedStock(context.productId(), context.quantity());
+            return context;
+        } catch (RuntimeException e) {
+            if (reserved) {
+                redisStockScriptService.increase(context.productId(), context.quantity());
+            }
+            throw e;
+        }
     }
 
-    public void restoreStockWithRedisLock(Long dealId, Long productId, int quantity) {
-        redisLockService.executeWithLock(
-            buildStockLockKey(dealId),
-            STOCK_LOCK_WAIT_TIME,
-            STOCK_LOCK_LEASE_TIME,
-            () -> {
-                dealOrderStockTxService.restoreStock(productId, quantity);
-                return null;
-            }
-        );
+    public void restoreStock(Long productId, int quantity) {
+        redisStockScriptService.increase(productId, quantity);
+        dealOrderStockTxService.restoreReservedStock(productId, quantity);
     }
 
     /**
@@ -86,10 +76,6 @@ public class DealOrderTransactionService {
         order.completePayment(payment);
 
         return OrderResponse.from(orderService.saveOrder(order));
-    }
-
-    private String buildStockLockKey(Long dealId) {
-        return "lock:deal-order:" + dealId;
     }
 
     static DealException dealNotFound(Long dealId) {

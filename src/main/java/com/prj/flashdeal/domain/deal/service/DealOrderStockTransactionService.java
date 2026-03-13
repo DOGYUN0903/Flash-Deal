@@ -20,8 +20,8 @@ public class DealOrderStockTransactionService {
     private final MemberService memberService;
     private final StockService stockService;
 
-    @Transactional
-    public DealOrderTransactionService.DealOrderContext validateAndDecreaseStock(
+    @Transactional(readOnly = true)
+    public DealOrderTransactionService.DealOrderContext validateOrderContext(
         Long memberId,
         Long dealId,
         DealOrderRequest request
@@ -32,7 +32,6 @@ public class DealOrderStockTransactionService {
 
         deal.validateActive();
         deal.validateOrderAmount(request.getAmount(), request.getQuantity());
-        stockService.decreaseStockWithoutLock(deal.getProduct().getId(), request.getQuantity());
 
         return new DealOrderTransactionService.DealOrderContext(
             member.getId(),
@@ -44,7 +43,12 @@ public class DealOrderStockTransactionService {
     }
 
     @Transactional
-    public void restoreStock(Long productId, int quantity) {
-        stockService.increaseStockWithoutLock(productId, quantity);
+    public void applyReservedStock(Long productId, int quantity) {
+        stockService.decreaseReservedStock(productId, quantity);
+    }
+
+    @Transactional
+    public void restoreReservedStock(Long productId, int quantity) {
+        stockService.increaseReservedStock(productId, quantity);
     }
 }

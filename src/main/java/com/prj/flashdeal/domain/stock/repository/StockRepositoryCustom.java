@@ -10,4 +10,6 @@ public interface StockRepositoryCustom {
     Optional<Stock> findByProductId(Long productId);
     Optional<Stock> findByProductIdWithLock(Long productId);
     Map<Long, Integer> findQuantitiesByProductIds(List<Long> productIds);
+    long decreaseQuantity(Long productId, int quantity);
+    long increaseQuantity(Long productId, int quantity);
 }
