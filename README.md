@@ -849,4 +849,30 @@ public DealResponse getDeal(Long dealId) {
 - 재고는 실시간 조회로 정합성 유지
 - Scale-Out 환경에서 성능과 정합성을 함께 고려한 캐시 구조 확보
 
+#### 적용 후 검증
+
+Redis 공용 캐시 적용 후 동일한 목록 조회 요청을 다시 확인해보니, 서버 3대가 모두 같은 딜 목록을 반환했습니다.
+
+즉 이전처럼 서버마다 서로 다른 딜 목록을 반환하지 않았고, 공용 캐시를 통해 **동일한 메타데이터를 바라보는 구조**로 정리된 것을 확인할 수 있었습니다.
+
+<img width="800" alt="cache consistency after redis 1" src="./images/v2-cache/cache-consistency-after-redis-01.png" />
+
+> Redis 공용 캐시 적용 후 서버 3대가 동일한 딜 목록을 반환하는 것을 확인
+
+<img width="800" alt="cache consistency after redis 2" src="./images/v2-cache/cache-consistency-after-redis-02.png" />
+
+> 같은 시점의 동일한 요청에 대해 서버 간 응답 차이가 사라진 상태
+
+<img width="800" alt="cache consistency after redis 3" src="./images/v2-cache/cache-consistency-after-redis-03.png" />
+
+> 로컬 캐시 불일치 문제를 재현했던 동일한 흐름에서, Redis 공용 캐시 적용 후에는 일관된 응답을 반환
+
+결과적으로 딜 목록 조회는:
+
+- 메타데이터는 Redis 공용 캐시로 공유하고
+- 재고는 DB에서 실시간 조회하며
+- 서버가 달라져도 동일한 목록 메타데이터를 반환하는 구조
+
+로 안정화했습니다.
+
 </details>
