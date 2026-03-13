@@ -50,6 +50,20 @@ public class StockService {
     }
 
     /**
+     * 재고 차감 — Redis 분산 락을 통해 진입을 제어한 뒤 일반 조회로 차감.
+     */
+    @Transactional
+    public void decreaseStockWithoutLock(Long productId, int quantity) {
+        Stock stock = stockRepository.findByProductId(productId)
+            .orElseThrow(() -> new StockException(StockErrorCode.STOCK_NOT_FOUND));
+
+        stock.decrease(quantity);
+        if (stock.getQuantity() == 0) {
+            stock.getProduct().markSoldOut();
+        }
+    }
+
+    /**
      * 재고 복구 — 주문 취소 시 호출.
      * 재고가 다시 생기면 상품을 ON_SALE로 변경.
      */
@@ -60,6 +74,18 @@ public class StockService {
 
         stock.increase(quantity);
         // TODO: V3에서 StockRestoredEvent로 개선 예정
+        stock.getProduct().markOnSale();
+    }
+
+    /**
+     * 재고 복구 — Redis 분산 락을 통해 진입을 제어한 뒤 일반 조회로 복구.
+     */
+    @Transactional
+    public void increaseStockWithoutLock(Long productId, int quantity) {
+        Stock stock = stockRepository.findByProductId(productId)
+            .orElseThrow(() -> new StockException(StockErrorCode.STOCK_NOT_FOUND));
+
+        stock.increase(quantity);
         stock.getProduct().markOnSale();
     }
 
