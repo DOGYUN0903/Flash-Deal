@@ -11,6 +11,8 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.support.PageableExecutionUtils;
 import org.springframework.stereotype.Repository;
 
+import com.prj.flashdeal.domain.deal.dto.cache.DealDetailCacheValue;
+import com.prj.flashdeal.domain.deal.dto.cache.DealListItemCacheValue;
 import com.prj.flashdeal.domain.deal.dto.response.DealResponse;
 import com.prj.flashdeal.domain.deal.repository.DealRepositoryCustom;
 import com.querydsl.core.types.Projections;
@@ -55,6 +57,33 @@ public class DealRepositoryCustomImpl implements DealRepositoryCustom {
     }
 
     @Override
+    public Page<DealListItemCacheValue> findDealListCacheValues(Pageable pageable) {
+        List<DealListItemCacheValue> content = queryFactory
+            .select(Projections.constructor(DealListItemCacheValue.class,
+                deal.id,
+                product.id,
+                product.name,
+                deal.title,
+                product.price,
+                deal.discountPrice,
+                deal.status,
+                deal.startAt,
+                deal.endAt))
+            .from(deal)
+            .join(deal.product, product)
+            .orderBy(deal.createdAt.desc())
+            .offset(pageable.getOffset())
+            .limit(pageable.getPageSize())
+            .fetch();
+
+        JPAQuery<Long> countQuery = queryFactory
+            .select(deal.count())
+            .from(deal);
+
+        return PageableExecutionUtils.getPage(content, pageable, countQuery::fetchOne);
+    }
+
+    @Override
     public DealResponse findDealWithStock(Long dealId) {
         return queryFactory
             .select(Projections.constructor(DealResponse.class,
@@ -71,6 +100,25 @@ public class DealRepositoryCustomImpl implements DealRepositoryCustom {
             .from(deal)
             .join(deal.product, product)
             .leftJoin(stock).on(stock.product.id.eq(product.id))
+            .where(deal.id.eq(dealId))
+            .fetchOne();
+    }
+
+    @Override
+    public DealDetailCacheValue findDealDetailCacheValue(Long dealId) {
+        return queryFactory
+            .select(Projections.constructor(DealDetailCacheValue.class,
+                deal.id,
+                product.id,
+                product.name,
+                deal.title,
+                product.price,
+                deal.discountPrice,
+                deal.status,
+                deal.startAt,
+                deal.endAt))
+            .from(deal)
+            .join(deal.product, product)
             .where(deal.id.eq(dealId))
             .fetchOne();
     }

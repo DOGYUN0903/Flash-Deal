@@ -1,5 +1,8 @@
 package com.prj.flashdeal.domain.stock.service;
 
+import java.util.List;
+import java.util.Map;
+
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -86,6 +89,11 @@ public class StockService {
         return stockRepository.findByProductId(productId)
             .map(Stock::getQuantity)
             .orElse(0);
+    }
+
+    @Transactional(readOnly = true)
+    public Map<Long, Integer> getStocks(List<Long> productIds) {
+        return stockRepository.findQuantitiesByProductIds(productIds);
     }
 
 }

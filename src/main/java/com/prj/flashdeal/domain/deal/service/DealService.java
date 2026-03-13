@@ -1,27 +1,27 @@
 package com.prj.flashdeal.domain.deal.service;
 
+import java.util.List;
+import java.util.Map;
+
 import org.springframework.cache.annotation.CacheEvict;
-import org.springframework.cache.annotation.Cacheable;
-import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.prj.flashdeal.domain.deal.dto.cache.DealDetailCacheValue;
+import com.prj.flashdeal.domain.deal.dto.cache.DealListPageCacheValue;
 import com.prj.flashdeal.domain.deal.dto.request.DealCreateRequest;
 import com.prj.flashdeal.domain.deal.dto.request.DealOrderRequest;
 import com.prj.flashdeal.domain.deal.dto.response.DealResponse;
 import com.prj.flashdeal.domain.deal.entity.Deal;
-import com.prj.flashdeal.domain.deal.exception.DealErrorCode;
-import com.prj.flashdeal.domain.deal.exception.DealException;
-
 import com.prj.flashdeal.domain.deal.repository.DealRepository;
 import com.prj.flashdeal.domain.deal.service.DealOrderTransactionService.DealOrderContext;
-import com.prj.flashdeal.global.response.PageResponse;
 import com.prj.flashdeal.domain.order.dto.response.OrderResponse;
 import com.prj.flashdeal.domain.payment.client.FakePaymentClient;
 import com.prj.flashdeal.domain.product.entity.Product;
 import com.prj.flashdeal.domain.product.service.ProductService;
 import com.prj.flashdeal.domain.stock.service.StockService;
+import com.prj.flashdeal.global.response.PageResponse;
 
 import lombok.RequiredArgsConstructor;
 
@@ -34,53 +34,40 @@ public class DealService {
     private final StockService stockService;
     private final FakePaymentClient fakePaymentClient;
     private final DealOrderTransactionService dealOrderTxService;
+    private final DealCacheService dealCacheService;
 
-    // ---------------- 딜 조회 ----------------
-
-    @Cacheable(value = "deals", key = "#pageable.pageNumber + '-' + #pageable.pageSize")
     @Transactional(readOnly = true)
     public PageResponse<DealResponse> getDeals(Pageable pageable) {
-        Page<DealResponse> page = dealRepository.findDealsWithStock(pageable);
-        return new PageResponse<>(page);
+        DealListPageCacheValue metadataPage =
+            dealCacheService.getDealListMetadata(pageable.getPageNumber(), pageable.getPageSize());
+
+        List<Long> productIds = metadataPage.content().stream()
+            .map(item -> item.productId())
+            .toList();
+
+        Map<Long, Integer> stockByProductId = stockService.getStocks(productIds);
+        return metadataPage.toResponse(stockByProductId);
     }
 
-    @Cacheable(value = "deal", key = "#dealId")
     @Transactional(readOnly = true)
     public DealResponse getDeal(Long dealId) {
-        DealResponse response = dealRepository.findDealWithStock(dealId);
-        if (response == null) {
-            throw new DealException(DealErrorCode.DEAL_NOT_FOUND);
-        }
-        return response;
+        DealDetailCacheValue metadata = dealCacheService.getDealDetailMetadata(dealId);
+        int remainingStock = stockService.getStock(metadata.productId());
+        return metadata.toResponse(remainingStock);
     }
 
-    // ---------------- 딜 주문 ----------------
-
-    /**
-     * 선착순 딜 주문 — 트랜잭션 분리 적용
-     *
-     * TX1: 검증 + 재고 차감 (DB 커넥션 사용 후 즉시 반환)
-     * 결제: 트랜잭션 밖에서 실행 (DB 커넥션 미점유)
-     * TX2: 주문 생성 + 결제 완료 처리
-     */
     public OrderResponse createDealOrder(Long memberId, Long dealId, DealOrderRequest request) {
-        // TX1: 검증 + 재고 차감 → 커넥션 즉시 반환
         DealOrderContext context = dealOrderTxService.validateAndDecreaseStock(memberId, dealId, request);
 
-        // 결제: 트랜잭션 밖 → DB 커넥션 미점유
         try {
             fakePaymentClient.pay(context.memberId(), request.getAmount());
         } catch (Exception e) {
-            // 결제 실패 시 재고 복구
             stockService.increaseStock(context.productId(), request.getQuantity());
             throw e;
         }
 
-        // TX2: 주문 생성 + 결제 완료
         return dealOrderTxService.completeOrder(context, request);
     }
-
-    // ---------------- 어드민 ----------------
 
     @CacheEvict(value = "deals", allEntries = true)
     @Transactional
@@ -100,12 +87,5 @@ public class DealService {
 
         Deal saved = dealRepository.save(deal);
         return DealResponse.from(saved, stockService.getStock(product.getId()));
-    }
-
-    // ---------------- private 헬퍼 ----------------
-
-    private Deal findDeal(Long dealId) {
-        return dealRepository.findById(dealId)
-            .orElseThrow(() -> new DealException(DealErrorCode.DEAL_NOT_FOUND));
     }
 }
