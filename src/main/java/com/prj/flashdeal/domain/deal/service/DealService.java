@@ -3,7 +3,6 @@ package com.prj.flashdeal.domain.deal.service;
 import java.util.List;
 import java.util.Map;
 
-import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -69,7 +68,6 @@ public class DealService {
         return dealOrderTxService.completeOrder(context, request);
     }
 
-    @CacheEvict(value = "deals", allEntries = true)
     @Transactional
     public DealResponse createDeal(DealCreateRequest request) {
         Product product = productService.findCartableProduct(request.getProductId());
@@ -86,6 +84,7 @@ public class DealService {
         deal.validateDiscountPrice(product.getPrice());
 
         Deal saved = dealRepository.save(deal);
+        dealCacheService.evictDealListMetadata(0, 10);
         return DealResponse.from(saved, stockService.getStock(product.getId()));
     }
 }

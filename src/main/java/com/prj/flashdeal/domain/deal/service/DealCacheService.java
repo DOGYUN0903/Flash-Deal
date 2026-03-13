@@ -1,5 +1,7 @@
 package com.prj.flashdeal.domain.deal.service;
 
+import org.springframework.cache.Cache;
+import org.springframework.cache.CacheManager;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.cache.annotation.Cacheable;
@@ -19,6 +21,7 @@ import lombok.RequiredArgsConstructor;
 public class DealCacheService {
 
     private final DealRepository dealRepository;
+    private final CacheManager cacheManager;
 
     @Cacheable(value = "deal", key = "#dealId")
     @Transactional(readOnly = true)
@@ -44,5 +47,12 @@ public class DealCacheService {
             result.getTotalElements(),
             result.getTotalPages()
         );
+    }
+
+    public void evictDealListMetadata(int page, int size) {
+        Cache cache = cacheManager.getCache("deals");
+        if (cache != null) {
+            cache.evict(page + ":" + size);
+        }
     }
 }
