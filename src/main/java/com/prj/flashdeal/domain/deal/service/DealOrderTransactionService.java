@@ -32,8 +32,8 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class DealOrderTransactionService {
 
-    private static final Duration STOCK_LOCK_WAIT_TIME = Duration.ofSeconds(10);
-    private static final Duration STOCK_LOCK_LEASE_TIME = Duration.ofSeconds(10);
+    private static final Duration STOCK_LOCK_WAIT_TIME = Duration.ofSeconds(2);
+    private static final Duration STOCK_LOCK_LEASE_TIME = Duration.ofSeconds(5);
 
     private final RedisLockService redisLockService;
     private final DealOrderStockTransactionService dealOrderStockTxService;
