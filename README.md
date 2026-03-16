@@ -120,7 +120,7 @@ Flash Deal은 한정 수량 상품을 선착순으로 구매하는 이커머스 
 
 ### MVP — 초기 구성
 
-![MVP Architecture](images/flash-deal_MVP_아키텍처.PNG)
+![MVP Architecture](images/flash-deal_MVP_아키텍처.png)
 
 > 단일 서버에 App, DB, Monitoring을 모두 배치한 초기 구성. 핵심 도메인(주문, 결제, 상품) 기능 구현에 집중.
 
@@ -138,7 +138,7 @@ Flash Deal은 한정 수량 상품을 선착순으로 구매하는 이커머스 
 
 ### 🔄 시퀀스 다이어그램 (주문 & 결제)
 
-![시퀀스 다이어그램](images/시퀀스_다이어그램.PNG)
+![시퀀스 다이어그램](images/시퀀스_다이어그램.png)
 
 ### 📁 패키지 구조
 
