@@ -1,10 +1,12 @@
+# workflow 이름
 name: flashdeal-ci/cd
+# Redis session deploy trigger comment
 
 on:
   push:
     branches:
       - dev
-      - v1/optimization
+      - v2/scale-out
     paths:
       - 'src/**'
       - 'build.gradle'
@@ -12,7 +14,6 @@ on:
       - 'Dockerfile'
       - 'docker-compose.prod.yml'
       - 'monitoring/**'
-      - '.github/workflows/**'
 
 jobs:
   # ==================================
@@ -57,7 +58,7 @@ jobs:
           docker push ${{ secrets.DOCKERHUB_USERNAME }}/flash-deal:latest
 
   # ==================================
-  # Job 2: 모니터링 서버 배포 (Prometheus target 업데이트)
+  # Job 2: 모니터링 서버 배포 (Prometheus + Grafana)
   # ==================================
   deploy-monitoring:
     needs: build
@@ -95,9 +96,11 @@ jobs:
                 metrics_path: '/actuator/prometheus'
                 static_configs:
                   - targets:
-                      - '${{ secrets.NCP_APP_PRIVATE_IP }}:8080'
+                      - '${{ secrets.NCP_APP_IP_1 }}:8080'
+                      - '${{ secrets.NCP_APP_IP_2 }}:8080'
+                      - '${{ secrets.NCP_APP_IP_3 }}:8080'
                     labels:
-                      group: 'flash-deal-v1'
+                      group: 'flash-deal-v2'
             EOF
 
             docker compose down || true
@@ -105,30 +108,36 @@ jobs:
             docker compose ps
 
   # ==================================
-  # Job 3: App 서버 배포
+  # Job 3: App 서버 1 배포 (모니터링 서버 경유)
   # ==================================
-  deploy-app:
+  deploy-app-1:
     needs: build
     runs-on: ubuntu-latest
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
 
-      - name: Copy files to app server
+      - name: Copy files to app server 1
         uses: appleboy/scp-action@master
         with:
-          host: ${{ secrets.NCP_APP_IP }}
+          host: ${{ secrets.NCP_APP_IP_1 }}
           username: root
           key: ${{ secrets.NCP_SSH_KEY }}
+          proxy_host: ${{ secrets.NCP_MONITORING_IP }}
+          proxy_username: root
+          proxy_key: ${{ secrets.NCP_SSH_KEY }}
           source: "docker-compose.prod.yml"
           target: "/root/flashdeal-app"
 
-      - name: Deploy to app server
+      - name: Deploy to app server 1
         uses: appleboy/ssh-action@master
         with:
-          host: ${{ secrets.NCP_APP_IP }}
+          host: ${{ secrets.NCP_APP_IP_1 }}
           username: root
           key: ${{ secrets.NCP_SSH_KEY }}
+          proxy_host: ${{ secrets.NCP_MONITORING_IP }}
+          proxy_username: root
+          proxy_key: ${{ secrets.NCP_SSH_KEY }}
           script: |
             cd /root/flashdeal-app
 
@@ -143,6 +152,8 @@ jobs:
             NCP_ACCESS_KEY=${{ secrets.NCP_ACCESS_KEY }}
             NCP_SECRET_KEY=${{ secrets.NCP_SECRET_KEY }}
             NCP_DEFAULT_IMAGE_URL=${{ secrets.NCP_DEFAULT_IMAGE_URL }}
+            REDIS_HOST=${{ secrets.REDIS_HOST }}
+            REDIS_PORT=${{ secrets.REDIS_PORT }}
             SPRING_PROFILES_ACTIVE=prod
             EOF
 
@@ -153,10 +164,122 @@ jobs:
             docker compose -f docker-compose.prod.yml ps
 
   # ==================================
-  # Job 4: 배포 결과 확인
+  # Job 4: App 서버 2 배포 (모니터링 서버 경유)
+  # ==================================
+  deploy-app-2:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Copy files to app server 2
+        uses: appleboy/scp-action@master
+        with:
+          host: ${{ secrets.NCP_APP_IP_2 }}
+          username: root
+          key: ${{ secrets.NCP_SSH_KEY }}
+          proxy_host: ${{ secrets.NCP_MONITORING_IP }}
+          proxy_username: root
+          proxy_key: ${{ secrets.NCP_SSH_KEY }}
+          source: "docker-compose.prod.yml"
+          target: "/root/flashdeal-app"
+
+      - name: Deploy to app server 2
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.NCP_APP_IP_2 }}
+          username: root
+          key: ${{ secrets.NCP_SSH_KEY }}
+          proxy_host: ${{ secrets.NCP_MONITORING_IP }}
+          proxy_username: root
+          proxy_key: ${{ secrets.NCP_SSH_KEY }}
+          script: |
+            cd /root/flashdeal-app
+
+            cat > .env << EOF
+            MYSQL_HOST=${{ secrets.MYSQL_HOST }}
+            MYSQL_DBNAME=${{ secrets.MYSQL_DBNAME }}
+            MYSQL_USERNAME=${{ secrets.MYSQL_USERNAME }}
+            MYSQL_PASSWORD=${{ secrets.MYSQL_PASSWORD }}
+            DOCKERHUB_USERNAME=${{ secrets.DOCKERHUB_USERNAME }}
+            TOSS_SECRET_KEY=${{ secrets.TOSS_SECRET_KEY }}
+            TOSS_BASE_URL=${{ secrets.TOSS_BASE_URL }}
+            NCP_ACCESS_KEY=${{ secrets.NCP_ACCESS_KEY }}
+            NCP_SECRET_KEY=${{ secrets.NCP_SECRET_KEY }}
+            NCP_DEFAULT_IMAGE_URL=${{ secrets.NCP_DEFAULT_IMAGE_URL }}
+            REDIS_HOST=${{ secrets.REDIS_HOST }}
+            REDIS_PORT=${{ secrets.REDIS_PORT }}
+            SPRING_PROFILES_ACTIVE=prod
+            EOF
+
+            docker compose -f docker-compose.prod.yml down || true
+            docker pull ${{ secrets.DOCKERHUB_USERNAME }}/flash-deal:latest
+            docker image prune -f
+            docker compose -f docker-compose.prod.yml up -d
+            docker compose -f docker-compose.prod.yml ps
+
+  # ==================================
+  # Job 5: App 서버 3 배포 (모니터링 서버 경유)
+  # ==================================
+  deploy-app-3:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Copy files to app server 3
+        uses: appleboy/scp-action@master
+        with:
+          host: ${{ secrets.NCP_APP_IP_3 }}
+          username: root
+          key: ${{ secrets.NCP_SSH_KEY }}
+          proxy_host: ${{ secrets.NCP_MONITORING_IP }}
+          proxy_username: root
+          proxy_key: ${{ secrets.NCP_SSH_KEY }}
+          source: "docker-compose.prod.yml"
+          target: "/root/flashdeal-app"
+
+      - name: Deploy to app server 3
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.NCP_APP_IP_3 }}
+          username: root
+          key: ${{ secrets.NCP_SSH_KEY }}
+          proxy_host: ${{ secrets.NCP_MONITORING_IP }}
+          proxy_username: root
+          proxy_key: ${{ secrets.NCP_SSH_KEY }}
+          script: |
+            cd /root/flashdeal-app
+
+            cat > .env << EOF
+            MYSQL_HOST=${{ secrets.MYSQL_HOST }}
+            MYSQL_DBNAME=${{ secrets.MYSQL_DBNAME }}
+            MYSQL_USERNAME=${{ secrets.MYSQL_USERNAME }}
+            MYSQL_PASSWORD=${{ secrets.MYSQL_PASSWORD }}
+            DOCKERHUB_USERNAME=${{ secrets.DOCKERHUB_USERNAME }}
+            TOSS_SECRET_KEY=${{ secrets.TOSS_SECRET_KEY }}
+            TOSS_BASE_URL=${{ secrets.TOSS_BASE_URL }}
+            NCP_ACCESS_KEY=${{ secrets.NCP_ACCESS_KEY }}
+            NCP_SECRET_KEY=${{ secrets.NCP_SECRET_KEY }}
+            NCP_DEFAULT_IMAGE_URL=${{ secrets.NCP_DEFAULT_IMAGE_URL }}
+            REDIS_HOST=${{ secrets.REDIS_HOST }}
+            REDIS_PORT=${{ secrets.REDIS_PORT }}
+            SPRING_PROFILES_ACTIVE=prod
+            EOF
+
+            docker compose -f docker-compose.prod.yml down || true
+            docker pull ${{ secrets.DOCKERHUB_USERNAME }}/flash-deal:latest
+            docker image prune -f
+            docker compose -f docker-compose.prod.yml up -d
+            docker compose -f docker-compose.prod.yml ps
+
+  # ==================================
+  # Job 6: 배포 결과 확인
   # ==================================
   verify:
-    needs: [deploy-monitoring, deploy-app]
+    needs: [deploy-monitoring, deploy-app-1, deploy-app-2, deploy-app-3]
     runs-on: ubuntu-latest
     steps:
       - name: Deployment Status

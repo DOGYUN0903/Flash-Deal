@@ -1,4 +1,4 @@
-<div align="center">
+﻿<div align="center">
 
 # ⚡ Flash Deal
 
@@ -19,8 +19,9 @@
 - [📊 ERD](#-erd)
 - [💡 기술적 의사결정](#-기술적-의사결정)
 - [🏛️ 도메인 설계 원칙](#️-도메인-설계-원칙)
-- [🔧 트러블슈팅](#-트러블슈팅)
 - [📈 V1 부하 테스트 & 성능 최적화](#-v1-부하-테스트--성능-최적화)
+- [🚀 V2 / Scale-Out 검증](#-v2--scale-out-검증)
+- [📊 V1 vs V2 최종 비교](#-v1-vs-v2-최종-비교)
 
 ---
 
@@ -45,9 +46,14 @@ Flash Deal은 한정 수량 상품을 선착순으로 구매하는 이커머스 
 | 👤 Member | 프로필 조회/수정, 비밀번호 변경 |
 | 📦 Product | 상품 등록/수정/삭제/검색 (어드민), 상품 조회/검색 (일반) |
 | 🛒 Cart | 장바구니 담기/조회/수량 수정/삭제/비우기 |
+| ⚡ Deal | 딜 목록/상세 조회, 선착순 딜 주문, 딜 주문 취소 |
 | 📝 Order | 장바구니 주문, 바로 구매, 주문 조회/취소, 배송 관리 (어드민) |
 | 💳 Payment | 결제 처리, TossPayments 승인, 결제 조회, 환불 |
 | ⭐ Review | 구매 확인 후 리뷰 작성, 상품별 리뷰 조회 |
+
+### 🔄 유저 플로우
+
+![User Flow](images/user_flow.png)
 
 ---
 
@@ -65,17 +71,21 @@ Flash Deal은 한정 수량 상품을 선착순으로 구매하는 이커머스 
 ![Lombok](https://img.shields.io/badge/Lombok-CA0124?style=for-the-badge&logoColor=white)
 ![Gradle](https://img.shields.io/badge/Gradle-02303A?style=for-the-badge&logo=gradle&logoColor=white)
 ![Swagger](https://img.shields.io/badge/Swagger-85EA2D?style=for-the-badge&logo=swagger&logoColor=black)
+![Spring Session](https://img.shields.io/badge/Spring_Session-6DB33F?style=for-the-badge&logo=spring&logoColor=white)
 ![Micrometer](https://img.shields.io/badge/Micrometer-6DB33F?style=for-the-badge&logoColor=white)
 ![Prometheus](https://img.shields.io/badge/Prometheus-E6522C?style=for-the-badge&logo=prometheus&logoColor=white)
 
 **Database**
 
 ![MySQL](https://img.shields.io/badge/MySQL_8.0-4479A1?style=for-the-badge&logo=mysql&logoColor=white)
+![Redis](https://img.shields.io/badge/Redis-DC382D?style=for-the-badge&logo=redis&logoColor=white)
 ![H2](https://img.shields.io/badge/H2-09476B?style=for-the-badge&logoColor=white)
 
 **Infrastructure**
 
 ![NCP](https://img.shields.io/badge/NCP_Server-03C75A?style=for-the-badge&logoColor=white)
+![NCP](https://img.shields.io/badge/NCP_Load_Balancer-03C75A?style=for-the-badge&logoColor=white)
+![NCP](https://img.shields.io/badge/NCP_Cloud_DB-03C75A?style=for-the-badge&logoColor=white)
 ![NCP](https://img.shields.io/badge/NCP_Object_Storage-03C75A?style=for-the-badge&logoColor=white)
 ![Docker](https://img.shields.io/badge/Docker-2496ED?style=for-the-badge&logo=docker&logoColor=white)
 ![Grafana](https://img.shields.io/badge/Grafana-F46800?style=for-the-badge&logo=grafana&logoColor=white)
@@ -100,9 +110,31 @@ Flash Deal은 한정 수량 상품을 선착순으로 구매하는 이커머스 
 
 ## 🏗️ 시스템 아키텍처
 
-![Flash Deal Architecture](images/flash-deal_MVP_아키텍처.PNG)
+단순한 기능 구현에서 끝나지 않고, **부하 테스트로 병목을 재현한 뒤 아키텍처를 단계적으로 진화**시켰습니다.
 
-> 현재는 확장성을 위해 **App Server, Cloud DB (Managed), Monitoring Server**를 분리하여 운영 중입니다.
+| 단계 | 핵심 변화 | 해결한 문제 |
+|------|----------|------------|
+| **MVP** | 단일 서버에 모든 컴포넌트 배치 | 핵심 기능 구현 및 배포 |
+| **V1** | 서버 분리 + 비관적 락 + 트랜잭션 분리 | Race Condition, Connection Pool 고갈 |
+| **V2** | 3대 Scale-Out + Redis 세션/캐시 + Lua Script | CPU 포화, 세션 불일치, 캐시 불일치, 락 직렬화 |
+
+### MVP — 초기 구성
+
+![MVP Architecture](images/flash-deal_MVP_아키텍처.PNG)
+
+> 단일 서버에 App, DB, Monitoring을 모두 배치한 초기 구성. 핵심 도메인(주문, 결제, 상품) 기능 구현에 집중.
+
+### V1 — 단일 서버
+
+![V1 Architecture](images/flash-deal_V1_아키텍처.png)
+
+> Nginx 리버스 프록시 + Spring Boot 단일 서버 구성. 비관적 락과 트랜잭션 분리로 정합성을 확보했지만, **CPU 2코어 포화와 비관적 락 직렬화로 300명부터 전체 API가 붕괴.**
+
+### V2 — Scale-Out
+
+![V2 Architecture](images/flash-deal_V2_아키텍처.png)
+
+> NCP Load Balancer + App Server 3대로 확장. Spring Session + Redis로 세션 공유, Redis 공용 캐시로 서버 간 일관성 확보, Lua Script로 DB row lock 의존 제거. **300명 시나리오에서 전체 TPS 7.7배 증가, 에러율 0%.**
 
 ### 🔄 시퀀스 다이어그램 (주문 & 결제)
 
@@ -116,9 +148,11 @@ src/main/java/com/prj/flashdeal/
 │   ├── auth/          # 인증 (회원가입, 로그인)
 │   ├── member/        # 회원 관리
 │   ├── product/       # 상품 관리
+│   ├── stock/         # 재고 관리
 │   ├── cart/          # 장바구니
 │   ├── order/         # 주문
 │   ├── payment/       # 결제
+│   ├── deal/          # 선착순 딜
 │   ├── review/        # 리뷰
 │   └── file/          # 파일 업로드
 └── global/
@@ -143,8 +177,10 @@ src/main/java/com/prj/flashdeal/
 | MEMBER | status | `ACTIVE`, `DORMANT`, `WITHDRAWN`, `BANNED` |
 | PRODUCT | status | `PREPARING`, `ON_SALE`, `SOLD_OUT` |
 | ORDERS | status | `PENDING`, `PAID`, `SHIPPED`, `DELIVERED`, `CANCELED` |
-| PAYMENT | status | `PENDING`, `COMPLETED`, `FAILED`, `REFUNDED` |
+| PAYMENT | status | `PENDING`, `COMPLETED`, `REFUNDED` |
 | PAYMENT | method | `CARD`, `CASH`, `TRANSFER`, `TOSS` |
+| DEAL | status | `SCHEDULED`, `ACTIVE`, `ENDED` |
+| DEAL_ORDER | status | `PENDING`, `PAID`, `CANCELED` |
 
 ---
 
@@ -252,271 +288,6 @@ order.ship() / order.deliver()  // 배송 상태 전환 시 순서 검증 포함
 
 ---
 
-<details>
-<summary><strong>🗑️ "지워도 기록은 남긴다" — Soft Delete로 연관 데이터 정합성 보장</strong></summary>
-
-<br>
-
-**배경**
-
-회원 탈퇴나 상품 삭제 시 DB에서 물리적으로 삭제하면, 해당 데이터를 참조하는 주문·리뷰 레코드의 FK가 깨져 데이터 정합성이 무너집니다.
-
-**고민**
-
-| 방식 | 문제 |
-|------|------|
-| Hard Delete | `order_item.product_id` FK 위반, 탈퇴 회원의 주문·리뷰 조회 불가 |
-| **Soft Delete** | `is_deleted = true` 플래그로 논리 삭제, 데이터는 보존 |
-
-**결론 — Soft Delete 채택**
-
-| 엔티티 | 삭제 처리 |
-|--------|----------|
-| Member | `is_deleted = true`, `status = WITHDRAWN`, `deleted_at` 기록 |
-| Product | `is_deleted = true`, `deleted_at` 기록 |
-
-- 탈퇴한 회원의 과거 주문·리뷰 데이터가 보존되어 운영 이슈 발생 시 추적 가능
-- 삭제된 상품이 있어도 `OrderItem`의 가격 스냅샷으로 과거 주문 조회 정상 동작
-- 조회 시 `is_deleted = false` 조건으로 삭제된 항목을 자동 필터링
-
-</details>
-
----
-
-## 🔧 트러블슈팅
-
-<details>
-<summary><strong>🔴 "재고는 50개인데 주문이 100건?" — 동시 주문 시 과매도(Overselling) 해결</strong></summary>
-
-<br>
-
-**🚨 문제 발견**
-
-JMeter로 재고 50개짜리 상품에 100명이 동시에 `POST /api/orders/direct`를 호출하는 부하테스트를 진행했습니다.
-정상이라면 50건만 성공해야 하지만 **68건이 성공**했고, Grafana의 `product_stock_remaining` 게이지는 0이 아닌 **7에서 멈추는 현상**을 확인했습니다.
-
-| 구분 | 기대값 | 실제값 |
-|------|--------|--------|
-| 주문 성공 건수 | 최대 50건 | **68건** |
-| 최종 재고 | 0개 | **7개** |
-| 과매도 수량 | 0건 | **25건** (68 - 43) |
-
-![Grafana 재고 미감소](images/troubleshooting/grafana-result.png)
-![JMeter 68건 성공](images/troubleshooting/jmeter-result.png)
-
-추가로 100건 중 **32건이 500 에러**로 실패했습니다. 서버 로그를 확인하니 아래 예외가 반복 발생하고 있었습니다.
-
-```
-Caused by: org.hibernate.exception.LockAcquisitionException: could not execute statement
-  [Deadlock found when trying to get lock; try restarting transaction]
-  [update products set category=?,description=?,image_url=?,is_deleted=?,name=?,
-   price=?,status=?,stock_quantity=?,updated_at=? where product_id=?]
-```
-
-![데드락 서버 로그](images/troubleshooting/dead-lock.png)
-
-이는 과매도와 함께 **락 미적용이 낳은 또 다른 증상**입니다.
-
-**🔍 원인 분석 — Lost Update + MySQL 데드락**
-
-```java
-// 락 없는 상태 — 일반 SELECT 후 엔티티에서 재고 감소
-Product product = productService.findCartableProduct(productId); // 락 없는 SELECT
-product.decreaseStock(quantity); // 메모리 값 기준으로 차감 후 UPDATE
-```
-
-```
-초기 재고: 50개, 동시 요청: 100건
-
-Thread  1: SELECT stock = 50 ┐
-Thread  2: SELECT stock = 50 │ 모든 스레드가 동시에
-Thread  3: SELECT stock = 50 │ 같은 값(50)을 읽음
-   ...                        │
-Thread 68: SELECT stock = 50 ┘
-
-Thread  1: UPDATE stock = 49  ┐
-Thread  2: UPDATE stock = 49  │ 각자 50-1=49를 계산해
-Thread  3: UPDATE stock = 49  │ 서로의 변경을 덮어씀 (Lost Update)
-   ...                        │
-Thread 68: UPDATE stock = 49  ┘
-
-결과: 주문 68건 성공, 재고 7개 → 25건 과매도
-```
-
-`decreaseStock()`에 `stock < quantity` 가드가 있어 음수는 발생하지 않습니다.
-진짜 문제는 **여러 트랜잭션이 서로의 업데이트를 덮어써 재고가 제대로 줄지 않는 것**입니다.
-
-**🔍 원인 분석 — MySQL 데드락 (500 에러)**
-
-`order_items`가 `products`에 FK를 가지므로, INSERT 시 MySQL이 부모 행(`products`)에 **공유 락(S-Lock)** 을 획득합니다.
-동시에 `UPDATE products SET stock_quantity = ?`는 동일 행에 **배타 락(X-Lock)** 을 요구합니다.
-두 트랜잭션이 서로의 S-Lock을 기다리며 X-Lock을 획득하지 못하는 순환 대기가 발생합니다.
-
-```
-TX-A: order_items INSERT → products 행에 S-Lock 획득
-TX-B: order_items INSERT → products 행에 S-Lock 획득
-
-TX-A: products UPDATE → X-Lock 필요, TX-B의 S-Lock 대기 중
-TX-B: products UPDATE → X-Lock 필요, TX-A의 S-Lock 대기 중
-
-→ Deadlock! MySQL이 한 쪽을 Victim으로 롤백
-```
-
-`LockAcquisitionException`은 `CustomException`을 상속하지 않아 `GlobalExceptionHandler`의 `@ExceptionHandler(Exception.class)`에 걸려 **500**으로 응답됩니다.
-비관적 락(`SELECT FOR UPDATE`)을 적용하면 한 트랜잭션이 X-Lock을 선점하여 다른 트랜잭션이 대기하므로, 이 순환 대기 자체가 발생하지 않습니다.
-
-**⚖️ 해결 방법 비교**
-
-| 방법 | 동작 방식 | 장점 | 단점 |
-|------|----------|------|------|
-| **낙관적 락** (`@Version`) | 커밋 시 버전 충돌 감지 → 예외 | DB 락 없음, 충돌 없을 때 성능 우수 | 고경합 시 `OptimisticLockException` 폭증 → 재시도 폭풍, 실패율 급등 |
-| **비관적 락** (`SELECT FOR UPDATE`) | 조회 시점에 행 락 점유 → 직렬화 | 정합성 확실, 구현 단순 | 처리량 한계, 락 대기로 응답 지연 |
-| **Redis 분산 락** (Redisson) | Redis 기반 외부 락 | DB 독립적, 분산 환경에 유리 | 단일 서버에서 공유 메모리 사용 가능한데 Redis 인프라까지 추가하는 건 오버엔지니어링 → 배제 |
-
-**🧪 낙관적 락 적용 및 테스트**
-
-`@Version` 필드만 추가하고 동일한 동시 주문 테스트(재고 50개, 100명 동시 요청)를 실행했습니다.
-
-```java
-// Product 엔티티 — 낙관적 락
-@Version
-private Long version;
-
-// 커밋 시 Hibernate가 자동으로 아래 쿼리 실행
-// UPDATE products SET stock_quantity=?, version=? WHERE product_id=? AND version=?
-// → 다른 트랜잭션이 먼저 커밋했다면 version 불일치 → ObjectOptimisticLockingFailureException
-```
-
-서버 로그에는 아래 예외가 반복 발생했습니다.
-
-```
-Caused by: org.hibernate.exception.LockAcquisitionException: could not execute statement
-  [Deadlock found when trying to get lock; try restarting transaction]
-  [update products set ...,version=? where product_id=? and version=?]
-```
-
-![낙관적 락 Grafana](images/troubleshooting/낙관락-grafana.png)
-![낙관적 락 JMeter](images/troubleshooting/낙관락-jmeter.png)
-
-낙관적 락은 `UPDATE ... WHERE version=?` 조건으로 버전 충돌을 감지하지만, **데드락 자체를 막지는 못합니다.**
-`order_items INSERT`의 FK S-Lock과 `products UPDATE`의 X-Lock이 여전히 순환 대기를 일으킵니다.
-충돌이 발생할 때마다 예외가 throw되고, 재시도 로직 없이는 대부분 요청이 실패합니다.
-재시도를 추가해도 고경합 환경에서는 재시도 요청이 연쇄 폭증해 오히려 서버 부하가 커집니다.
-**동시 주문이 잦은 선착순 환경에서는 낙관적 락이 부적합**하다고 판단했습니다.
-
-**✅ 채택 — 비관적 락 (Pessimistic Lock)**
-
-낙관적 락의 실패를 직접 확인한 뒤, `SELECT ... FOR UPDATE`로 전환했습니다.
-
-```java
-// ProductRepository — SELECT FOR UPDATE 쿼리 추가
-@Lock(LockModeType.PESSIMISTIC_WRITE)
-@Query("SELECT p FROM Product p WHERE p.id = :productId")
-Optional<Product> findByIdWithLock(@Param("productId") Long productId);
-
-// ProductService.findCartableProduct() — SELECT FOR UPDATE로 변경
-// 엔티티의 첫 번째 접근을 락 쿼리로 만들어 Hibernate 1차 캐시 stale 문제 방지
-@Transactional
-public Product findCartableProduct(Long productId) {
-    Product product = productRepository.findByIdWithLock(productId)
-            .orElseThrow(...);  // SELECT ... FOR UPDATE → 다른 트랜잭션 대기
-    ...
-    return product;
-}
-
-// OrderService.createDirectOrder() — 락이 걸린 엔티티에서 직접 재고 감소
-Product product = productService.findCartableProduct(request.getProductId());
-product.decreaseStock(request.getQuantity()); // 엔티티가 자신의 재고를 직접 관리
-```
-
-한 트랜잭션이 락을 점유하는 동안 다른 트랜잭션은 대기하므로, 항상 최신 재고를 기준으로 차감됩니다.
-재고 50개에 100건 요청 시 정확히 50건만 성공하고, Grafana 게이지가 50 → 0으로 정확히 감소합니다.
-
-![비관적 락 Grafana](images/troubleshooting/비관락-grafana.png)
-![비관적 락 JMeter](images/troubleshooting/비관락-jmeter.png)
-
-</details>
-
----
-
-<details>
-<summary><strong>🔴 "100명도 못 버티는 서버" — 부하테스트로 발견한 커넥션 풀 고갈</strong></summary>
-
-<br>
-
-**🚨 문제 발견**
-
-기능 구현 완료 후 실제 서비스 수준의 트래픽을 감당할 수 있는지 검증하기 위해 JMeter 부하테스트를 진행했습니다.
-
-**테스트 시나리오:** 로그인 → 상품 목록 조회 → 상품 상세 조회 → 바로 구매 (1유저 = 4요청)
-
-| 설정 | 값 |
-|------|-----|
-| 동시 사용자 | 100명 |
-| Ramp-up | 30초 |
-| Duration | 120초 |
-
-**Before 측정 결과**
-
-| 지표 | 값 |
-|------|-----|
-| TPS | 72.8 req/sec |
-| 평균 응답시간 | 1,196ms |
-| P95 | 2,776ms |
-| P99 | 3,630ms |
-| 에러율 | 0% |
-
-![JMeter Summary](load-test/load-jmeter-summary.png)
-![JMeter Aggregate](load-test/load-jmeter-aggregate.png)
-
-Grafana를 확인하니 **HikariCP Active 커넥션이 최대치(10)에 붙어 있고, Pending이 최대 90까지 치솟는 현상**을 발견했습니다.
-
-![Grafana HikariCP](load-test/load-grafana-hikari.png)
-![Grafana CPU](load-test/load-grafana-cpu-usage.png)
-
-**🔍 원인 분석**
-
-Little's Law에 따르면 최대 처리량 = 커넥션 수 / 평균 응답시간입니다.
-
-```
-Max TPS ≈ Pool Size(10) / Avg Response Time(1.2s) ≈ 8.3 req/sec
-```
-
-HikariCP 기본값 max-pool-size=10으로는 평균 응답시간 1.2초 기준 이론상 8~9 TPS가 한계입니다.
-100명이 동시에 요청하면 커넥션을 기다리는 Pending 대기열이 폭발적으로 증가합니다.
-
-**⚖️ 해결 방법 비교**
-
-| 방법 | 장점 | 단점 |
-|------|------|------|
-| **Pool Size 증가** | 즉시 적용, 설정만으로 해결 | 커넥션은 메모리 소비, 무한정 늘릴 수 없음. DB 서버도 max_connections 제한 있음 |
-| **응답시간 단축** | 근본적인 해결, Pool Size 효율 극대화 | 병목 원인 파악 후 추가 최적화 필요 |
-| **두 가지 병행** | 즉각적 개선 + 근본 해결 | - |
-
-**✅ 채택 — Pool Size 조정 + 응답시간 단축 병행**
-
-```yaml
-# application-prod.yml
-spring:
-  datasource:
-    hikari:
-      maximum-pool-size: ___   # TODO: After 수치 기입
-      minimum-idle: ___
-```
-
-**After 측정 결과**
-
-| 지표 | Before | After | 개선율 |
-|------|--------|-------|-------|
-| TPS | 72.8 | ___ | ___% |
-| P95 | 2,776ms | ___ | ___% |
-| P99 | 3,630ms | ___ | ___% |
-| HikariCP Pending | 최대 90 | ___ | - |
-
-</details>
-
----
-
 ## 📈 V1 부하 테스트 & 성능 최적화
 
 > 싱글 서버(NCP vCPU 2EA, 8GB RAM)에서 선착순 딜 주문의 성능 한계를 단계적으로 탐색하고,
@@ -533,98 +304,6 @@ spring:
 | 세션 | In-Memory (서버 메모리)                             |
 | 테스트 도구 | Apache JMeter 5.6.3                            |
 | 모니터링 | **별도 모니터링 서버 구성 (Grafana + Prometheus)**       |
-
----
-
-<details>
-<summary><strong>"10명도 못 버틴다" — Race Condition과 커넥션 풀 고갈 발견</strong></summary>
-
-<br>
-
-#### 최적화 전 부하 테스트 (10 → 1000명)
-
-실제 플래시 딜 사용 패턴을 재현하여 최적화 전 V1 서버의 성능을 기록하고, 병목의 심각성을 데이터로 증명합니다.
-
-```
-1. 로그인 (Once Only Controller — 스레드당 1회)
-2. 전원 로그인 완료 대기 (Synchronizing Timer)
-3. 딜 목록 조회 GET /api/deals
-4. 딜 상세 조회 GET /api/deals/{id}
-5. 딜 주문 POST /api/deals/{id}/order
-```
-
-**Smoke Test (10명):**
-
-| API | Avg (ms) | P95 (ms) | Error % |
-|-----|----------|----------|---------|
-| 딜 목록 조회 | 55 | 63 | 0% |
-| 딜 상세 조회 | 47 | 52 | 0% |
-| **딜 주문** | **817** | **908** | **30%** |
-
-| 항목 | 값 |
-|------|-----|
-| 재고 차감 | 10개 중 **1개만 감소** |
-| 초과 판매 | **9건** |
-
-![10명 JMeter Summary](images/v1-load-test/before/10-summary.png)
-![10명 재고 변화](images/v1-load-test/before/10-stock.png)
-
-> 10명만으로도 Race Condition 발생. 주문 10건 성공했지만 재고는 1개만 감소.
-
----
-
-**전체 구간 종합 (10 → 1000명):**
-
-| 동시 사용자 | 딜 주문 Avg | 딜 주문 Error | 재고 차감 | 초과 판매 | Pending Max |
-|-----------|-----------|-------------|---------|---------|------------|
-| 10명 | 817ms | 30% | 1개 | 9건 | 0 |
-| 100명 | 4,204ms | 17% | 11개 | ~72건 | 3 |
-| 300명 | 11,879ms | 21.33% | 31개 | ~205건 | 30 |
-| 500명 | 19,101ms | 20.80% | 50개 | ~346건 | 164 |
-| 1000명 | 38,389ms | 20.30% | ~98개 | ~700건 | 42 |
-
-![500명 JMeter Summary](images/v1-load-test/before/500-summary.png)
-![500명 CPU](images/v1-load-test/before/500-cpu.png)
-![500명 HikariCP](images/v1-load-test/before/500-hikari.png)
-![1000명 재고 변화](images/v1-load-test/before/1000-stock.png)
-
----
-
-#### 병목 분석
-
-**병목 1: Race Condition (재고 정합성 깨짐)**
-
-```java
-// lock 없는 조회 — 여러 트랜잭션이 같은 재고를 읽음
-Stock stock = stockRepository.findByProductId(productId)
-    .orElseThrow(...);
-stock.decrease(quantity);  // 각자 같은 값에서 차감 → Lost Update
-```
-
-```
-Thread 1: SELECT quantity = 100  ┐
-Thread 2: SELECT quantity = 100  │ 동시에 같은 값을 읽음
-Thread 3: SELECT quantity = 100  ┘
-Thread 1: UPDATE quantity = 99   ┐
-Thread 2: UPDATE quantity = 99   │ 서로의 변경을 덮어씀
-Thread 3: UPDATE quantity = 99   ┘
-결과: 3건 주문 성공, 재고는 1만 감소
-```
-
-**병목 2: Connection Pool 고갈 (@Transactional 안에서 결제)**
-
-```java
-@Transactional  // 트랜잭션 시작 → DB 커넥션 획득
-public OrderResponse createDealOrder(...) {
-    stockService.decreaseStock(...);           // 재고 차감
-    fakePaymentClient.pay(memberId, amount);   // 500~1000ms 대기 (커넥션 점유 중!)
-    order.completePayment(...);                // 결제 완료 처리
-}  // 트랜잭션 종료 → 커넥션 반환
-```
-
-Little's Law: `최대 TPS = Pool Size(10) / 평균 커넥션 점유 시간(0.75s) ≈ 13.3 TPS` → 이론상 초당 13건이 한계
-
-</details>
 
 ---
 
@@ -938,3 +617,585 @@ LAZY 로딩으로 인한 3개 쿼리를 1개로 통합하고, Caffeine 캐시를
 | 세션 불일치 | **Spring Session + Redis** |
 
 </details>
+
+---
+
+## 🚀 V2 / Scale-Out 검증
+
+V2는 단순히 서버 수를 늘려보는 단계가 아니었습니다.
+
+V1에서 조회 최적화, 비관적 락, 트랜잭션 분리까지 먼저 적용한 뒤 다시 부하 테스트를 수행했고,
+그 결과 **단일 서버 구조에서는 더 이상 코드 레벨 최적화만으로 넘기기 어려운 한계**가 명확해졌습니다.
+
+- 주문 TPS는 약 `12.8~12.9/sec` 수준에서 고정되었고
+- 300명 시나리오에서는 로그인/조회/주문 전체가 함께 지연되었으며
+- 서버를 여러 대로 확장하자 세션 불일치와 로컬 캐시 불일치가 새롭게 드러났습니다
+
+즉 V2는 단일 서버 구조에서 드러난 **주문 병목, 상태 공유 문제, 캐시 일관성 문제**를
+분산 환경에 맞게 다시 설계하는 단계였습니다.
+
+### V2 테스트 환경
+
+| 항목 | 스펙 |
+|------|------|
+| 서버 | NCP vCPU 2EA, RAM 8GB, Ubuntu × **3대** |
+| WAS | Spring Boot 3.5.6 (내장 Tomcat) |
+| 로드밸런서 | **NCP Load Balancer (Round Robin)** |
+| DB | **NCP Cloud DB for MySQL (vCPU 2EA, RAM 8GB)** |
+| 캐시 / 세션 | **NCP Cloud DB for Cache (Redis)** — 세션 저장소 + 공용 캐시 + Lua Script 재고 차감 |
+| HikariCP | max-pool-size: 10 (서버당) → **총 30개** |
+| 세션 | **Spring Session + Redis** (서버 간 공유) |
+| 테스트 도구 | Apache JMeter 5.6.3 |
+| 모니터링 | **별도 모니터링 서버 구성 (Grafana + Prometheus)** |
+
+V2의 목표는 단순히 서버 수를 늘리는 것이 아니라,
+**V1에서 확인한 병목이 다중 서버 환경에서 어디까지 완화되고, 무엇은 여전히 구조적으로 남는지**를 검증하는 것이었습니다.
+
+### V1에서 확인한 병목과 V2 검증 방향
+
+| V1 한계 | 현재 원인 | V2 방향 |
+|------|------|------|
+| 주문 TPS가 약 13/sec 수준에서 고정 | MySQL row-level 비관적 락 직렬화 | Redis Lua Script 기반 atomic 재고 차감 |
+| 300명 시나리오에서 전체 API 지연 폭증 | 주문이 커넥션을 점유해 조회까지 연쇄 지연 | 앱 서버 다중화 + 커넥션 분산 |
+| CPU 2코어 한계로 조회 TPS 하락 | 단일 서버 물리적 자원 한계 | 앱 서버 3대 + 로드밸런서 |
+| 세션 공유 불가 | In-Memory 세션 | Spring Session + Redis |
+| 로컬 캐시 불일치 | 서버별 JVM 로컬 캐시 | Redis 공용 캐시 |
+
+
+<details>
+<summary><strong>"왜 자꾸 로그인이 풀리나?" — 세션 불일치 재현과 해결</strong></summary>
+
+V1에서는 세션을 각 애플리케이션 서버 메모리에 저장했습니다. 단일 서버에서는 문제가 없었지만, V2에서 앱 서버를 3대로 늘리고 NCP Load Balancer의 Round Robin 분산을 적용하자 로그인은 성공해도 인증이 필요한 API가 일부 서버에서 실패하는 문제가 발생했습니다.
+
+#### 문제 재현
+
+- 환경: App Server 3대 + NCP Load Balancer + In-Memory Session
+- 시나리오: 로그인 1회 후 `/api/members/me` 20회 호출
+- 결과: 로그인은 성공했지만 내 정보 조회는 `6 성공 / 14 실패`
+
+![세션 불일치 재현 전](images/v2-session/session-mismatch-before.png)
+
+원인은 로그인 세션이 특정 서버 메모리에만 저장되기 때문이었습니다. 로드밸런서가 다음 요청을 다른 서버로 보내면, 해당 서버는 같은 `JSESSIONID`를 받아도 세션을 찾지 못했습니다.
+
+#### 1차 완화: Sticky Session
+
+Target Group에서 Sticky Session을 활성화해 같은 사용자의 요청이 같은 서버로 고정되도록 설정했습니다.
+
+![Sticky Session 설정](images/v2-session/sticky-session-setting.png)
+
+같은 시나리오를 다시 실행하자 `/api/members/me` 20회가 모두 성공했습니다.
+
+![Sticky Session 적용 후](images/v2-session/sticky-session-after.png)
+
+| 구분 | 결과 |
+|------|------|
+| 적용 전 | `6 성공 / 14 실패` |
+| 적용 후 | `20 성공 / 0 실패` |
+
+하지만 Sticky Session은 세션을 공유한 것이 아니라, 같은 사용자를 같은 서버로 계속 보내는 방식이었습니다. 서버 장애 시 세션이 함께 사라지고, 특정 서버 쏠림도 발생할 수 있어 최종안으로는 적절하지 않았습니다.
+
+#### 최종 해결: Spring Session + Redis
+
+최종적으로는 세션 저장소를 애플리케이션 서버 메모리 밖으로 분리했습니다.
+
+- `Spring Session + Redis` 적용
+- 세션 저장 위치를 서버 메모리에서 Redis로 이전
+- 어느 서버가 요청을 받아도 같은 `JSESSIONID`로 Redis에서 세션 조회 가능
+
+실제로 Redis에도 아래와 같은 세션 키가 저장되는 것을 확인했습니다.
+
+![Redis 세션 키 확인](images/v2-session/redis-session-keys.png)
+
+- `flashdeal:session:sessions:<sessionId>`
+- `flashdeal:session:sessions:expires:<sessionId>`
+- `flashdeal:session:expirations:<timestamp>`
+- `flashdeal:session:index:org.springframework.session.FindByIndexNameSessionRepository.PRINCIPAL_NAME_INDEX_NAME:<email>`
+
+이를 통해 V2에서는 Sticky Session 없이도, 어느 서버가 요청을 받더라도 동일한 로그인 상태를 유지할 수 있는 구조를 적용했습니다.
+
+</details>
+
+---
+
+<details>
+<summary><strong>"왜 어떤 서버는 새 딜이 보이고, 어떤 서버는 안 보일까?" — 로컬 캐시 불일치 해결</strong></summary>
+
+#### 문제 상황
+
+Scale-Out 환경에서 각 앱 서버가 로컬 Caffeine 캐시를 사용하자, 서버마다 서로 다른 캐시 데이터를 보유하게 되었습니다.
+
+실제로 서버 3대에서 모두 딜 목록 캐시를 적재한 뒤, 한 서버에서 새로운 딜을 생성하고 다시 조회해보니:
+
+- 어떤 서버는 최신 딜이 포함된 응답을 반환했고
+- 어떤 서버는 이전에 저장된 오래된 캐시 데이터를 그대로 반환했습니다
+
+즉, 같은 시점에도 서버마다 다른 응답을 반환하는 **캐시 불일치 문제**가 발생했습니다.
+
+<img width="800" alt="cache warmup" src="./images/v2-cache/cache-warmup-before-change.png" />
+
+> 서버 3대에서 동일한 딜 목록 캐시를 먼저 적재
+
+<img width="800" alt="create new deal" src="./images/v2-cache/cache-create-new-deal.png" />
+
+> 한 서버에서 새로운 딜 생성
+
+<img width="800" alt="cache inconsistency" src="./images/v2-cache/cache-inconsistency-after-change.png" />
+
+> 같은 시점에도 서버마다 서로 다른 딜 목록을 반환
+
+#### 원인
+
+기존 캐시는 각 서버 JVM 메모리에 저장되는 **로컬 캐시(Caffeine)** 였습니다.
+
+따라서:
+- `app-server-1` 에서 캐시를 비워도
+- `app-server-2`, `app-server-3` 의 캐시는 그대로 남아 있었고
+- 로드밸런서를 통해 들어오는 요청은 서버마다 다른 결과를 반환할 수 있었습니다.
+
+#### 캐시 전략을 결정하며 고민한 점
+
+처음에는 딜 메타데이터가 자주 변경되지 않는다는 점에서,  
+`로컬 캐시 + 짧은 TTL` 만으로도 충분하지 않을까 고민했습니다.
+
+실제로 딜은 관리자가 미리 등록해두고, 사용자는 정해진 시간에 접속해 조회하고 구매하는 흐름에 가깝습니다.  
+즉 재고처럼 초 단위로 계속 바뀌는 데이터가 아니기 때문에, 메타데이터만 놓고 보면 로컬 캐시도 충분히 현실적인 선택이었습니다.
+
+하지만 V2는 단순히 조회 성능을 높이는 것이 아니라,  
+**Scale-Out 환경에서 서버 간 동일한 데이터를 안정적으로 제공할 수 있는 구조를 만드는 것**이 더 중요했습니다.
+
+로컬 캐시는 불일치를 줄일 수는 있지만, 서버마다 캐시가 분리되어 있기 때문에  
+구조적으로 같은 시점의 일관성을 보장하지는 못한다고 판단했습니다.
+
+#### 최종 선택: Redis 공용 캐시
+
+Redis 공용 캐시는:
+
+- 여러 앱 서버가 동일한 캐시 데이터를 바라볼 수 있고
+- Scale-Out 환경에서도 캐시 일관성을 유지할 수 있으며
+- 이후 세션 저장소, 조회 캐시 등 공통 인프라 계층으로 확장하기에도 적합했습니다.
+
+그래서 최종적으로는:
+
+- **딜 메타데이터는 Redis 공용 캐시**
+- **재고는 DB 실시간 조회**
+- **주문 시점은 항상 DB 기준 재검증**
+
+구조를 선택했습니다.
+
+#### 딜 상세 조회는 어떻게 분리했는가
+
+한정판매 이커머스에서는 모든 데이터를 캐시하면 안 된다고 판단했습니다.
+
+- 캐시 가능한 데이터
+  - 딜 제목, 설명, 이미지, 할인 가격, 시작/종료 시간 같은 메타데이터
+- 캐시하면 안 되는 데이터
+  - 재고 수량
+  - 품절 여부
+  - 실제 주문 가능 여부
+
+특히 재고는 조금만 오래된 값이 보여도 오버셀링으로 이어질 수 있기 때문에,  
+**정합성이 성능보다 우선**이라고 판단했습니다.
+
+그래서 딜 상세 조회는 아래 두 영역으로 분리했습니다.
+
+- **캐시 가능 영역**
+  - 딜/상품 메타데이터
+- **실시간 조회 영역**
+  - 현재 재고 정보
+
+조회 흐름은 다음과 같습니다.
+
+1. Redis에서 딜 메타데이터 조회
+2. DB에서 현재 재고 조회
+3. 두 데이터를 조합해 최종 응답 생성
+
+```text
+GET /api/deals/{dealId}
+ -> Redis: 딜 메타데이터 조회
+ -> DB: 현재 재고 조회
+ -> DealResponse 조합
+```
+
+즉, "보여주는 정보"와 "판단 기준 정보"를 분리했습니다.
+
+#### 코드 구조
+
+책임을 분리하기 위해 캐시 조회 서비스와 오케스트레이션 로직을 나눴습니다.
+
+- `DealCacheService`
+  - `@Cacheable` 로 딜 메타데이터 캐시 조회
+- `StockService`
+  - 현재 재고 실시간 조회
+- `DealService`
+  - 메타데이터 + 재고를 조합해 최종 `DealResponse` 반환
+
+```java
+@Cacheable(value = "deal", key = "#dealId")
+public DealDetailCacheValue getDealDetailMetadata(Long dealId) {
+    return dealRepository.findDealDetailCacheValueById(dealId)
+        .orElseThrow(() -> new CustomException(DealErrorCode.DEAL_NOT_FOUND));
+}
+```
+
+> `DealCacheService`는 캐시 가능한 딜 메타데이터만 Redis에서 조회합니다.
+
+```java
+public DealResponse getDeal(Long dealId) {
+    DealDetailCacheValue metadata = dealCacheService.getDealDetailMetadata(dealId);
+    Stock stock = stockService.getStock(metadata.productId());
+
+    return metadata.toResponse(stock.getQuantity());
+}
+```
+
+> `DealService`는 Redis에서 가져온 메타데이터와 DB에서 조회한 재고를 조합해 최종 응답을 생성합니다.
+
+#### 캐시 읽기/쓰기 전략을 결정하며 고민한 점
+
+딜 조회 캐시를 설계하면서, 읽기 전략은 `Cache-Aside`, 쓰기 전략은 `Write-Invalidate`를 선택했습니다.
+
+먼저 읽기 전략에서는 `Read-Through`도 고려할 수 있었지만,  
+이 프로젝트는 모든 데이터를 캐시하지 않고 **딜 메타데이터만 캐시하고 재고는 실시간 조회**해야 했습니다.  
+즉 캐시 대상과 비캐시 대상을 애플리케이션에서 세밀하게 분리해야 했기 때문에,  
+캐시 조회와 DB 조회 흐름을 직접 제어할 수 있는 `Cache-Aside`가 더 적합하다고 판단했습니다.
+
+쓰기 전략에서는 `Write-Through`도 검토했지만,  
+딜 생성/변경 시점마다 상세 캐시와 페이지 단위 목록 캐시를 모두 즉시 갱신하는 것은 구현 복잡도가 높았습니다.  
+특히 목록 캐시는 페이지, 크기, 향후 정렬/필터 조건에 따라 여러 캐시 키가 생길 수 있어,  
+쓰기 시점에 정확한 값을 모두 갱신하는 것보다 **DB를 먼저 반영한 뒤 관련 캐시를 비우고, 다음 조회 요청에서 최신 데이터를 다시 적재하는 `Write-Invalidate` 방식이 더 단순하고 안전**하다고 판단했습니다.
+
+결과적으로 이 프로젝트의 캐시 전략은 다음과 같이 정리했습니다.
+
+- 읽기: `Cache-Aside`
+- 쓰기: `Write-Invalidate`
+- 재고: 캐시하지 않고 DB 실시간 조회
+- 주문 시점: 항상 DB 기준 재검증
+
+즉 성능만 극대화하는 전략보다,  
+**한정판매 이커머스에서 중요한 정합성과 Scale-Out 환경의 일관성을 함께 고려한 전략**을 선택했습니다.
+
+#### 딜 목록 캐시 전략을 결정하며 고민한 점
+
+처음에는 한정판매 딜의 특성상, 사용자에게 동시에 노출되는 딜 수가 많지 않을 것이라고 판단했습니다.  
+그래서 처음에는 **첫 페이지 캐시** 또는 **페이지네이션 제거**까지도 검토했습니다.
+
+하지만 이 방향을 그대로 선택하기에는 한 가지 문제가 있었습니다.
+
+한정판매 딜은 평소에는 적은 수로 운영될 수 있지만,  
+이벤트나 운영 정책에 따라 어느 날은 10개 이상이 동시에 노출될 가능성도 충분히 있었습니다.  
+즉 "지금은 적다"는 이유만으로 구조 자체를 단순화하면, 이후 딜 수가 늘어났을 때 다시 API와 캐시 전략을 변경해야 할 수 있다고 판단했습니다.
+
+그래서 다음과 같이 판단했습니다.
+
+- 딜 수가 적다고 해서 페이지네이션을 제거하지는 않는다
+- 향후 노출 딜 수 증가 가능성을 고려해 페이지네이션은 유지한다
+- 다만 캐시는 **페이지 단위**로 적용해 목록 조회 성능을 개선한다
+
+#### 결과
+
+최종적으로 V2의 캐시 전략은 다음과 같이 정리했습니다.
+
+- **딜 상세 조회**
+  - 메타데이터는 Redis 캐시
+  - 재고는 실시간 조회
+- **딜 목록 조회**
+  - 페이지네이션은 유지
+  - 목록은 페이지 단위 Redis 캐시
+  - 재고는 캐시 판단 기준에서 제외
+- **주문 시점**
+  - 항상 DB 기준 재검증
+
+이를 통해:
+
+- Redis 공용 캐시로 서버 간 메타데이터 일관성 확보
+- 로컬 캐시 불일치 문제 제거
+- 재고는 실시간 조회로 정합성 유지
+- Scale-Out 환경에서 성능과 정합성을 함께 고려한 캐시 구조 확보
+
+#### 적용 후 검증
+
+Redis 공용 캐시 적용 후 동일한 목록 조회 요청을 다시 확인해보니, 서버 3대가 모두 같은 딜 목록을 반환했습니다.
+
+즉 이전처럼 서버마다 서로 다른 딜 목록을 반환하지 않았고, 공용 캐시를 통해 **동일한 메타데이터를 바라보는 구조**로 정리된 것을 확인할 수 있었습니다.
+
+<img width="800" alt="cache consistency after redis 1" src="./images/v2-cache/cache-consistency-after-redis-01.png" />
+
+> Redis 공용 캐시 적용 후 서버 3대가 동일한 딜 목록을 반환하는 것을 확인
+
+<img width="800" alt="cache consistency after redis 2" src="./images/v2-cache/cache-consistency-after-redis-02.png" />
+
+> 같은 시점의 동일한 요청에 대해 서버 간 응답 차이가 사라진 상태
+
+<img width="800" alt="cache consistency after redis 3" src="./images/v2-cache/cache-consistency-after-redis-03.png" />
+
+> 로컬 캐시 불일치 문제를 재현했던 동일한 흐름에서, Redis 공용 캐시 적용 후에는 일관된 응답을 반환
+
+결과적으로 딜 목록 조회는:
+
+- 메타데이터는 Redis 공용 캐시로 공유하고
+- 재고는 DB에서 실시간 조회하며
+- 서버가 달라져도 동일한 목록 메타데이터를 반환하는 구조
+
+로 안정화했습니다.
+
+</details>
+
+---
+
+<details>
+<summary><strong>"왜 주문 TPS가 더 이상 늘지 않을까?" — 주문 병목 비교와 Redis Lua Script 채택</strong></summary>
+
+#### 문제 상황
+
+V1에서는 딜 주문 병목을 줄이기 위해 단순히 문제를 확인하는 데 그치지 않고, 먼저 적용 가능한 최적화를 수행했습니다.
+
+- 재고 정합성을 위한 **비관적 락 적용**
+- 외부 결제 구간을 분리하기 위한 **트랜잭션 분리**
+
+즉, V1 주문 처리는 이미 한 차례 구조를 정리한 상태였습니다.
+
+하지만 같은 상품에 주문이 집중되는 상황에서는 여전히 처리량이 거의 늘지 않았습니다.
+
+- 100명 스레드: 딜 주문 TPS `12.9/sec`
+- 300명 스레드: 딜 주문 TPS `12.8/sec`
+
+동시 요청 수를 3배로 늘려도 처리량은 거의 증가하지 않았고, 평균 응답시간만 크게 증가했습니다.
+
+<img width="800" alt="order bottleneck 100 jmeter" src="./images/v2-order/order-bottleneck-v1-after-optimization-100-jmeter.png" />
+
+> 비관적 락 + 트랜잭션 분리 적용 후 100명 스레드 테스트 결과
+
+<img width="800" alt="order bottleneck 300 jmeter" src="./images/v2-order/order-bottleneck-v1-after-optimization-300-jmeter.png" />
+
+> 같은 구조에서 300명 스레드로 올려도 주문 TPS는 약 `12.8/sec` 수준에 머물렀다
+
+<img width="800" alt="order bottleneck 300 hikari" src="./images/v2-order/order-bottleneck-v1-after-optimization-300-hikari.png" />
+
+> 처리량은 늘지 않았고, 커넥션 획득 대기와 타임아웃이 함께 증가했다
+
+#### 왜 이 문제가 남았는가
+
+문제의 본질은 애플리케이션 코드 자체보다, **동일 상품 재고를 차감할 때 발생하는 단일 MySQL row lock 직렬화 구조**에 있었습니다.
+
+즉 트랜잭션 분리로 DB 커넥션 점유 시간을 줄이는 데는 도움이 되었지만,
+재고 차감 자체가 `SELECT ... FOR UPDATE` 기반으로 직렬화되기 때문에
+같은 상품 주문이 몰리면 결국 처리량은 락이 허용하는 수준에서 고정될 수밖에 없었습니다.
+
+정리하면:
+
+- 트랜잭션 분리는 의미 있었다
+- 하지만 **락 구조 자체의 물리적 한계**는 남아 있었다
+- 따라서 이 문제는 단순 코드 최적화만으로는 넘기 어렵다고 판단했다
+
+#### V2에서 어떻게 풀 것인가
+
+이 문제는 세션 불일치나 로컬 캐시 불일치처럼 "서버를 여러 대로 늘리면 자동으로 해결되는 문제"가 아니었습니다.
+
+그래서 V2에서는:
+
+- 세션은 Redis로 외부화하고
+- 캐시는 Redis 공용 캐시로 통합하되
+- 주문 병목은 최종적으로 **DB row lock 중심 구조를 Redis atomic 재고 차감 구조로 넘기는 방향**으로 설계했습니다
+
+즉 주문 병목은 V2의 출발점이 아니라,  
+**V1 최적화 이후에도 남아 있던 구조적 한계를 V2에서 어떻게 풀어갈지 보여주는 핵심 과제**로 정리했습니다.
+
+#### V2-1. 비관적 락은 유지하고 앱 서버만 3대로 늘리면 어떻게 될까?
+
+먼저 가장 보수적인 방식으로 접근했습니다.
+
+- 재고 차감 방식은 기존과 동일하게 **MySQL 비관적 락**
+- 앱 서버만 3대로 확장
+- 같은 조건(`threads 100 / 300`, `ramp-up 5초`, `duration 60초`)으로 재테스트
+
+테스트 결과:
+
+- `100명`: 주문 TPS `37.6/sec`, 평균 응답시간 `2439ms`, 에러율 `0%`
+- `300명`: 주문 TPS `38.2/sec`, 평균 응답시간 `6866ms`, 에러율 `0%`
+
+즉 V1의 `12.8~12.9/sec` 대비 약 3배 수준으로 개선됐고, 재고도 정확히 차감되었습니다.
+
+이 결과는 V1의 주문 병목이 단순히 DB row lock 하나만의 문제가 아니라,
+**단일 서버 자원 한계와 커넥션 풀 한계가 함께 작용한 결과**였음을 보여주었습니다.
+
+다만 100명과 300명에서 처리량이 거의 비슷하게 유지된다는 점에서,
+남은 최종 상한은 여전히 **비관적 락 기반 재고 차감 구조 자체**에 있음을 확인했습니다.
+
+#### V2-2. Redisson으로 락 위치를 Redis로 옮겨보면?
+
+다음으로는 DB row lock 대신 **Redis 분산 락(Redisson)** 을 적용했습니다.
+
+의도는 단순했습니다.
+
+- DB가 하던 직렬화를 Redis가 대신하게 만들면
+- DB 락 부담이 줄고 처리량이 더 올라갈 수 있는지 확인하고 싶었습니다.
+
+하지만 결과는 기대와 달랐습니다.
+
+`waitTime = 10초`
+
+- 주문 TPS `29.9/sec`
+- 평균 응답시간 `3063ms`
+- 에러율 `9.82%`
+
+![Redisson wait 10s](images/v2-order/order-redisson-wait-10s-jmeter.png)
+
+> 충분히 기다리게 하면 실패율은 줄지만, TPS는 비관적 락보다 좋아지지 않았다
+
+`waitTime = 2초`
+
+- 주문 TPS `49.2/sec`
+- 평균 응답시간 `1910ms`
+- 에러율 `52.48%`
+
+![Redisson wait 2s](images/v2-order/order-redisson-wait-2s-jmeter.png)
+
+> 실무적인 대기시간으로 줄이자 TPS는 올라갔지만, 실패율이 절반을 넘었다
+
+![Redisson lock failure](images/v2-order/order-redisson-wait-2s-error-response.png)
+
+> 실패 응답은 대부분 `재고 락 획득 실패`였다
+
+즉 Redisson은 락 위치를 DB에서 Redis로 옮겼을 뿐,
+**락 기반 직렬화 구조 자체는 그대로 유지**했습니다.
+
+그래서:
+
+- 충분히 기다리게 하면 TPS 이점이 크지 않았고
+- 대기시간을 줄이면 실패율이 급격히 증가했습니다
+
+결론적으로 Redisson은 비교 실험으로는 의미 있었지만,
+이 프로젝트의 최종 주문 처리 방식으로 채택하기에는 **처리량과 실패율의 트레이드오프가 너무 컸습니다.**
+
+#### V2-3. 그렇다면 Redis Lua Script로 원자 차감하면 어떨까?
+
+마지막으로는 락을 잡는 방식 대신, Redis 안에서 재고 확인과 차감을 한 번에 수행하는
+**Lua Script 기반 원자 차감**을 적용했습니다.
+
+테스트 결과:
+
+- `100명`: 주문 TPS `37.5/sec`, 평균 응답시간 `2479ms`, 에러율 `0%`
+- `300명`: 주문 TPS `37.6/sec`, 평균 응답시간 `6949ms`, 에러율 `0%`
+
+![Lua 100 threads](images/v2-order/order-lua-100-jmeter.png)
+
+> 100명 부하에서는 에러 없이 주문 TPS `37.5/sec`를 기록했다
+
+![Lua 300 threads](images/v2-order/order-lua-300-jmeter.png)
+
+> 300명 부하에서도 에러 없이 주문 TPS `37.6/sec`를 유지했다
+
+재고 정합성도 정확했습니다.
+
+- `100명`: `100000 - 2346 = 97654`
+- `300명`: `100000 - 2558 = 97442`
+
+![Lua 100 stock consistency](images/v2-order/order-lua-100-stock-consistency.png)
+
+> 100명 부하 후 실제 재고가 주문 성공 수만큼 정확히 감소했다
+
+![Lua 300 stock consistency](images/v2-order/order-lua-300-stock-consistency.png)
+
+> 300명 부하에서도 재고 정합성은 정확히 유지됐다
+
+다만 여기서도 기대한 만큼 TPS가 더 오르지는 않았습니다.
+
+이 결과는 단순히 Redis를 도입한다고 병목이 자동으로 사라지는 것이 아니라,
+**현재 구조에서는 Redis 차감 이후에도 DB 재고 반영이 주문 핫패스에 남아 있기 때문에 처리량 상한이 크게 바뀌지 않을 수 있다**는 점을 보여주었습니다.
+
+즉 이번 실험을 통해 확인한 것은 다음과 같습니다.
+
+- **V2-1 비관적 락 + scale-out**
+  - V1 대비 약 3배 개선
+  - 정합성 유지
+- **V2-2 Redisson**
+  - 락 기반 직렬화 한계를 크게 넘지 못함
+  - 대기시간과 실패율의 트레이드오프가 큼
+- **V2-3 Lua Script**
+  - 정합성은 가장 안정적
+  - 실패율 0%
+  - 하지만 현재 구조에서는 TPS 추가 개선이 제한적
+
+#### 주문 방식 종합 비교
+
+| 방식 | TPS (100명) | TPS (300명) | Error | 정합성 | 채택 |
+|------|------------|------------|-------|--------|------|
+| V1 비관적 락 (1대) | 12.9 | 12.8 | 0% | O | - |
+| V2 비관적 락 (3대) | 37.6 | 38.2 | 0% | O | - |
+| V2 Redisson (10s) | 29.9 | - | 9.82% | O | X |
+| V2 Redisson (2s) | 49.2 | - | 52.48% | O | X |
+| **V2 Lua Script (3대)** | **37.5** | **37.6** | **0%** | **O** | **O** |
+
+Lua Script는 비관적 락 + 스케일아웃과 TPS는 비슷하지만, **락 없이 원자적 차감**으로 DB row lock 의존을 제거했다는 점에서 구조적으로 더 나은 선택이었습니다.
+Redisson은 처리량과 실패율의 트레이드오프가 커서 채택하지 않았습니다.
+
+---
+
+#### 현재 한계와 개선 방향
+
+**1. Lua Script의 실질적 TPS 효과가 제한적이다**
+
+Lua Script를 채택했지만 비관적 락 + 스케일아웃 대비 TPS가 거의 동일합니다.
+원인은 **Redis에서 재고를 차감한 뒤에도 DB UPDATE가 주문 핫패스에 동기적으로 남아 있기 때문**입니다.
+즉 Lua Script가 DB row lock 의존을 제거했지만, DB 쓰기 자체가 병목으로 남아 처리량 상한이 크게 바뀌지 않았습니다.
+
+> **개선 방향**: DB 재고 반영을 비동기(이벤트 기반)로 분리하면, Redis 차감만으로 주문 응답을 반환할 수 있습니다.
+> 이 구조에서 Lua Script의 원자적 차감이 진정한 성능 이점을 발휘할 것으로 예상하며, V3(MSA) 전환의 핵심 방향이기도 합니다.
+
+**2. Redis 단일 장애점(SPOF) 대비가 없다**
+
+현재 Redis에 세션, 캐시, 재고 데이터가 집중되어 있어, Redis 장애 시 세션 유실 · 캐시 미스 · 주문 실패가 동시에 발생할 수 있습니다.
+또한 Redis 재고 차감 → DB 반영 → 실패 시 Redis 롤백이라는 보상 로직이 있지만, **Redis 롤백 자체가 실패하면**(네트워크 단절 등) Redis와 DB 간 재고 불일치가 발생할 수 있습니다.
+
+> **개선 방향**: Redis Sentinel/Cluster로 가용성을 확보하고, 정합성 검증 배치(Redis ↔ DB 재고 비교 · 보정)를 도입하여 불일치를 자동 보정하는 구조가 필요합니다.
+
+</details>
+
+---
+
+## 📊 V1 vs V2 최종 비교
+
+> V1에서 확인한 병목이 V2에서 실제로 해소되었는지, 동일 조건(300명 시나리오)에서 직접 비교한 결과입니다.
+
+### V1 병목 해소 검증
+
+| V1 한계 | V1 증거 | V2 해결 방법 | V2 증거 | 해소 |
+|--------|--------|------------|--------|------|
+| **CPU 2코어 포화** | 100명 71.5%, 300명 포화 | 앱 서버 3대 + 로드밸런서 | 서버별 최대 ~11% | **해소** |
+| **비관적 락 직렬화** | TPS ~12.9 고정 | Redis Lua Script 원자 차감 | 주문 TPS 31.9/sec | **2.5배 개선** |
+| **커넥션 풀 경합** | Active 0, Timeout 다수 | 서버 3대 = 커넥션 30개 | 3대 모두 Timeout 0 | **완전 해소** |
+| **세션 불일치** | — (V1 단일 서버) | Spring Session + Redis | 서버 무관 인증 유지 | **해소** |
+| **로컬 캐시 불일치** | — (V1 단일 서버) | Redis 공용 캐시 | 서버 간 동일 응답 | **해소** |
+
+### 300명 시나리오 직접 비교
+
+| 지표 | V1 (1대) | V2 (3대) | 변화 |
+|------|---------|---------|------|
+| 딜 목록 Avg | 1,214ms | **303ms** | **75% 감소** |
+| 딜 상세 Avg | 5,447ms | **272ms** | **95% 감소** |
+| 딜 주문 Avg | 7,196ms | **1,157ms** | **84% 감소** |
+| 전체 TPS | ~12.3 | **94.3/sec** | **7.7배 증가** |
+| Error | 0% | **0%** | 유지 |
+| CPU | 0.7% (처리 불가) | **~10%** (여유) | 정상 처리 |
+| HikariCP | Active 0 (획득 불가) | Timeout **0** (3대) | **완전 해소** |
+| 재고 정합성 | ~730건 | **1,684건** 정확 | **100% 유지** |
+
+<img width="800" alt="scenario 300 threads summary" src="./images/v2-verification/scenario-300-jmeter-summary.png" />
+
+> V2 300명 시나리오 — 전체 API 에러율 0%, 안정적 처리
+
+<img width="800" alt="scenario 300 threads hikari" src="./images/v2-verification/scenario-300-hikari.png" />
+
+> 3대 서버 모두 HikariCP Timeout 0 — 커넥션 풀 경합 완전 해소
+
+### 결론
+
+V1에서 확인한 **CPU 포화, 비관적 락 직렬화, 커넥션 풀 경합** 세 가지 물리적 한계가 V2에서 모두 해소되었습니다.
+
+V2는 단순히 서버 수만 늘린 것이 아니라, **세션/캐시/주문 경로를 분산 환경에 맞게 재설계**한 결과입니다.
+
+### 남은 과제
+
+300명 시나리오에서 CPU ~10%, HikariCP 여유 충분 — **아직 V2의 천장에 도달하지 않았습니다.**
+
+500명, 1000명에서 어떤 지점이 먼저 병목이 되는지(DB 쓰기, Redis 처리량, 네트워크 대역폭)를 확인하고, 이를 V3(MSA) 전환의 근거로 활용할 계획입니다.

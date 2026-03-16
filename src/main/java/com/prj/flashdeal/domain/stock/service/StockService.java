@@ -1,5 +1,8 @@
 package com.prj.flashdeal.domain.stock.service;
 
+import java.util.List;
+import java.util.Map;
+
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -9,9 +12,11 @@ import com.prj.flashdeal.domain.stock.exception.StockErrorCode;
 import com.prj.flashdeal.domain.stock.exception.StockException;
 import com.prj.flashdeal.domain.stock.repository.StockRepository;
 
+import lombok.extern.slf4j.Slf4j;
 import lombok.RequiredArgsConstructor;
 
 @Service
+@Slf4j
 @RequiredArgsConstructor
 public class StockService {
 
@@ -47,6 +52,42 @@ public class StockService {
     }
 
     /**
+     * 재고 차감 — Redis 분산 락을 통해 진입을 제어한 뒤 일반 조회로 차감.
+     */
+    @Transactional
+    public void decreaseStockWithoutLock(Long productId, int quantity) {
+        Stock stock = stockRepository.findByProductId(productId)
+            .orElseThrow(() -> new StockException(StockErrorCode.STOCK_NOT_FOUND));
+
+        stock.decrease(quantity);
+        if (stock.getQuantity() == 0) {
+            stock.getProduct().markSoldOut();
+        }
+    }
+
+    @Transactional
+    public void decreaseReservedStock(Long productId, int quantity) {
+        long start = System.nanoTime();
+        long updated = stockRepository.decreaseQuantity(productId, quantity);
+        if (updated == 0) {
+            throw new StockException(StockErrorCode.OUT_OF_STOCK);
+        }
+
+        Stock stock = stockRepository.findByProductId(productId)
+            .orElseThrow(() -> new StockException(StockErrorCode.STOCK_NOT_FOUND));
+        if (stock.getQuantity() == 0) {
+            stock.getProduct().markSoldOut();
+        }
+        log.info(
+            "deal-order timing decreaseReservedStock productId={} quantity={} remaining={} totalMs={}",
+            productId,
+            quantity,
+            stock.getQuantity(),
+            toMillis(System.nanoTime() - start)
+        );
+    }
+
+    /**
      * 재고 복구 — 주문 취소 시 호출.
      * 재고가 다시 생기면 상품을 ON_SALE로 변경.
      */
@@ -58,6 +99,38 @@ public class StockService {
         stock.increase(quantity);
         // TODO: V3에서 StockRestoredEvent로 개선 예정
         stock.getProduct().markOnSale();
+    }
+
+    /**
+     * 재고 복구 — Redis 분산 락을 통해 진입을 제어한 뒤 일반 조회로 복구.
+     */
+    @Transactional
+    public void increaseStockWithoutLock(Long productId, int quantity) {
+        Stock stock = stockRepository.findByProductId(productId)
+            .orElseThrow(() -> new StockException(StockErrorCode.STOCK_NOT_FOUND));
+
+        stock.increase(quantity);
+        stock.getProduct().markOnSale();
+    }
+
+    @Transactional
+    public void increaseReservedStock(Long productId, int quantity) {
+        long start = System.nanoTime();
+        long updated = stockRepository.increaseQuantity(productId, quantity);
+        if (updated == 0) {
+            throw new StockException(StockErrorCode.STOCK_NOT_FOUND);
+        }
+
+        Stock stock = stockRepository.findByProductId(productId)
+            .orElseThrow(() -> new StockException(StockErrorCode.STOCK_NOT_FOUND));
+        stock.getProduct().markOnSale();
+        log.info(
+            "deal-order timing increaseReservedStock productId={} quantity={} remaining={} totalMs={}",
+            productId,
+            quantity,
+            stock.getQuantity(),
+            toMillis(System.nanoTime() - start)
+        );
     }
 
     /**
@@ -86,6 +159,15 @@ public class StockService {
         return stockRepository.findByProductId(productId)
             .map(Stock::getQuantity)
             .orElse(0);
+    }
+
+    @Transactional(readOnly = true)
+    public Map<Long, Integer> getStocks(List<Long> productIds) {
+        return stockRepository.findQuantitiesByProductIds(productIds);
+    }
+
+    private static long toMillis(long nanos) {
+        return nanos / 1_000_000;
     }
 
 }

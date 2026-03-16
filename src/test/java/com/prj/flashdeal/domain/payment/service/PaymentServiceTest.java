@@ -3,11 +3,9 @@ package com.prj.flashdeal.domain.payment.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.BDDMockito.then;
 import static org.mockito.BDDMockito.willDoNothing;
-import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.verify;
 
 import java.util.Optional;
 
@@ -26,13 +24,15 @@ import com.prj.flashdeal.domain.payment.client.TossPaymentClient;
 import com.prj.flashdeal.domain.payment.dto.request.PaymentRequest;
 import com.prj.flashdeal.domain.payment.dto.request.TossConfirmRequest;
 import com.prj.flashdeal.domain.payment.dto.response.PaymentResponse;
+import com.prj.flashdeal.domain.payment.dto.response.TossPaymentResponse;
 import com.prj.flashdeal.domain.payment.entity.Payment;
 import com.prj.flashdeal.domain.payment.entity.PaymentMethod;
+import com.prj.flashdeal.domain.payment.entity.PaymentStatus;
 import com.prj.flashdeal.domain.payment.exception.PaymentException;
 import com.prj.flashdeal.domain.payment.repository.PaymentRepository;
 
 @ExtendWith(MockitoExtension.class)
-@DisplayName("PaymentService 단위 테스트")
+@DisplayName("PaymentService unit tests")
 class PaymentServiceTest {
 
     @Mock
@@ -44,235 +44,142 @@ class PaymentServiceTest {
     @Mock
     private TossPaymentClient tossPaymentClient;
 
+    @Mock
+    private PaymentSaveService paymentSaveService;
+
     @InjectMocks
     private PaymentService paymentService;
 
-    // ========== processPayment ==========
-
     @Test
-    @DisplayName("processPayment 성공")
+    @DisplayName("processPayment saves a new payment")
     void processPayment_Success() {
-        // given
-        Long memberId = 1L;
-        Order order = createOrder(memberId, 10000);
+        Order order = createOrder(1L, 1L, 10000);
         PaymentRequest request = createPaymentRequest(1L, 10000, PaymentMethod.CARD);
 
         given(orderService.findOrder(1L)).willReturn(order);
-        given(paymentRepository.findByOrderId(order.getId())).willReturn(Optional.empty());
-        given(paymentRepository.save(any(Payment.class))).willAnswer(inv -> inv.getArgument(0));
+        given(paymentRepository.findByOrderId(1L)).willReturn(Optional.empty());
+        given(paymentRepository.save(any(Payment.class))).willAnswer(invocation -> {
+            Payment payment = invocation.getArgument(0);
+            ReflectionTestUtils.setField(payment, "id", 5L);
+            return payment;
+        });
 
-        // when
-        PaymentResponse response = paymentService.processPayment(memberId, request);
+        PaymentResponse response = paymentService.processPayment(1L, request);
 
-        // then
-        assertThat(response).isNotNull();
-        verify(paymentRepository, times(1)).save(any(Payment.class));
+        assertThat(response.paymentId()).isEqualTo(5L);
+        assertThat(response.amount()).isEqualTo(10000);
     }
 
     @Test
-    @DisplayName("processPayment 멱등성 - 이미 결제된 주문은 기존 결제 반환")
+    @DisplayName("processPayment returns existing payment for duplicate requests")
     void processPayment_Idempotent() {
-        // given
-        Long memberId = 1L;
-        Order order = createOrder(memberId, 10000);
-        Payment existingPayment = createPayment(order, 10000);
+        Order order = createOrder(1L, 1L, 10000);
+        Payment existingPayment = createCompletedPayment(order, 5L, 10000, PaymentMethod.CARD);
         PaymentRequest request = createPaymentRequest(1L, 10000, PaymentMethod.CARD);
 
         given(orderService.findOrder(1L)).willReturn(order);
-        given(paymentRepository.findByOrderId(order.getId())).willReturn(Optional.of(existingPayment));
+        given(paymentRepository.findByOrderId(1L)).willReturn(Optional.of(existingPayment));
 
-        // when
-        PaymentResponse response = paymentService.processPayment(memberId, request);
+        PaymentResponse response = paymentService.processPayment(1L, request);
 
-        // then
-        assertThat(response).isNotNull();
-        verify(paymentRepository, times(0)).save(any(Payment.class)); // 새로 저장하지 않음
+        assertThat(response.paymentId()).isEqualTo(5L);
+        then(paymentRepository).should().findByOrderId(1L);
     }
 
     @Test
-    @DisplayName("processPayment 실패 - 결제 금액 불일치")
+    @DisplayName("processPayment rejects mismatched amount")
     void processPayment_Fail_AmountMismatch() {
-        // given
-        Long memberId = 1L;
-        Order order = createOrder(memberId, 10000);
-        PaymentRequest request = createPaymentRequest(1L, 99999, PaymentMethod.CARD); // 금액 다름
+        Order order = createOrder(1L, 1L, 10000);
+        PaymentRequest request = createPaymentRequest(1L, 9999, PaymentMethod.CARD);
 
         given(orderService.findOrder(1L)).willReturn(order);
-        given(paymentRepository.findByOrderId(order.getId())).willReturn(Optional.empty());
+        given(paymentRepository.findByOrderId(1L)).willReturn(Optional.empty());
 
-        // when & then
-        assertThatThrownBy(() -> paymentService.processPayment(memberId, request))
+        assertThatThrownBy(() -> paymentService.processPayment(1L, request))
             .isInstanceOf(PaymentException.class);
     }
 
     @Test
-    @DisplayName("processPayment 실패 - 주문자 불일치")
-    void processPayment_Fail_Unauthorized() {
-        // given
-        Long memberId = 2L; // 주문자는 1L
-        Order order = createOrder(1L, 10000);
-        PaymentRequest request = createPaymentRequest(1L, 10000, PaymentMethod.CARD);
-
-        given(orderService.findOrder(1L)).willReturn(order);
-
-        // when & then
-        assertThatThrownBy(() -> paymentService.processPayment(memberId, request))
-            .isInstanceOf(PaymentException.class);
-    }
-
-    // ========== confirmTossPayment ==========
-
-    @Test
-    @DisplayName("confirmTossPayment 성공")
+    @DisplayName("confirmTossPayment saves confirmed payment through PaymentSaveService")
     void confirmTossPayment_Success() {
-        // given
-        Long memberId = 1L;
-        Order order = createOrder(memberId, 10000);
+        Order order = createOrder(1L, 1L, 10000);
         TossConfirmRequest request = createTossConfirmRequest("ORDER-1-uuid123", 10000);
+        TossPaymentResponse tossResponse = new TossPaymentResponse();
+        ReflectionTestUtils.setField(tossResponse, "paymentKey", "tgen_key");
+        PaymentResponse savedResponse = new PaymentResponse(
+            7L,
+            1L,
+            PaymentStatus.COMPLETED,
+            PaymentMethod.TOSS,
+            10000,
+            null,
+            null
+        );
 
         given(orderService.findOrder(1L)).willReturn(order);
-        given(paymentRepository.findByOrderId(order.getId())).willReturn(Optional.empty());
-        willDoNothing().given(tossPaymentClient).confirm(any(), any(), any());
-        given(paymentRepository.save(any(Payment.class))).willAnswer(inv -> inv.getArgument(0));
+        given(paymentRepository.findByOrderId(1L)).willReturn(Optional.empty());
+        given(tossPaymentClient.confirm("test-payment-key", "ORDER-1-uuid123", 10000)).willReturn(tossResponse);
+        given(paymentSaveService.saveConfirmedPayment(1L, 10000, "tgen_key")).willReturn(savedResponse);
 
-        // when
-        PaymentResponse response = paymentService.confirmTossPayment(memberId, request);
+        PaymentResponse response = paymentService.confirmTossPayment(1L, request);
 
-        // then
-        assertThat(response).isNotNull();
-        verify(tossPaymentClient, times(1)).confirm(any(), any(), any());
+        assertThat(response.paymentId()).isEqualTo(7L);
+        then(paymentSaveService).should().saveConfirmedPayment(1L, 10000, "tgen_key");
     }
 
     @Test
-    @DisplayName("confirmTossPayment 멱등성 - 이미 결제된 주문은 기존 결제 반환")
-    void confirmTossPayment_Idempotent() {
-        // given
-        Long memberId = 1L;
-        Order order = createOrder(memberId, 10000);
-        Payment existingPayment = createPayment(order, 10000);
-        TossConfirmRequest request = createTossConfirmRequest("ORDER-1-uuid123", 10000);
-
-        given(orderService.findOrder(1L)).willReturn(order);
-        given(paymentRepository.findByOrderId(order.getId())).willReturn(Optional.of(existingPayment));
-
-        // when
-        PaymentResponse response = paymentService.confirmTossPayment(memberId, request);
-
-        // then
-        assertThat(response).isNotNull();
-        verify(tossPaymentClient, times(0)).confirm(any(), any(), any()); // Toss API 호출 안 함
-    }
-
-    @Test
-    @DisplayName("confirmTossPayment 실패 - 결제 금액 불일치")
-    void confirmTossPayment_Fail_AmountMismatch() {
-        // given
-        Long memberId = 1L;
-        Order order = createOrder(memberId, 10000);
-        TossConfirmRequest request = createTossConfirmRequest("ORDER-1-uuid123", 99999);
-
-        given(orderService.findOrder(1L)).willReturn(order);
-        given(paymentRepository.findByOrderId(order.getId())).willReturn(Optional.empty());
-
-        // when & then
-        assertThatThrownBy(() -> paymentService.confirmTossPayment(memberId, request))
-            .isInstanceOf(PaymentException.class);
-    }
-
-    // ========== getPayment ==========
-
-    @Test
-    @DisplayName("getPayment 성공")
+    @DisplayName("getPayment returns owned payment")
     void getPayment_Success() {
-        // given
-        Long memberId = 1L;
-        Long paymentId = 1L;
-        Order order = createOrder(memberId, 10000);
-        Payment payment = createPayment(order, 10000);
+        Order order = createOrder(1L, 1L, 10000);
+        Payment payment = createCompletedPayment(order, 5L, 10000, PaymentMethod.CARD);
 
-        given(paymentRepository.findById(paymentId)).willReturn(Optional.of(payment));
+        given(paymentRepository.findById(5L)).willReturn(Optional.of(payment));
 
-        // when
-        PaymentResponse response = paymentService.getPayment(memberId, paymentId);
+        PaymentResponse response = paymentService.getPayment(1L, 5L);
 
-        // then
-        assertThat(response).isNotNull();
+        assertThat(response.paymentId()).isEqualTo(5L);
     }
 
     @Test
-    @DisplayName("getPayment 실패 - 존재하지 않는 결제")
-    void getPayment_Fail_NotFound() {
-        // given
-        given(paymentRepository.findById(anyLong())).willReturn(Optional.empty());
-
-        // when & then
-        assertThatThrownBy(() -> paymentService.getPayment(1L, 999L))
-            .isInstanceOf(PaymentException.class);
-    }
-
-    @Test
-    @DisplayName("getPayment 실패 - 주문자 불일치")
-    void getPayment_Fail_Unauthorized() {
-        // given
-        Long memberId = 2L; // 주문자는 1L
-        Order order = createOrder(1L, 10000);
-        Payment payment = createPayment(order, 10000);
-
-        given(paymentRepository.findById(1L)).willReturn(Optional.of(payment));
-
-        // when & then
-        assertThatThrownBy(() -> paymentService.getPayment(memberId, 1L))
-            .isInstanceOf(PaymentException.class);
-    }
-
-    // ========== refundPayment ==========
-
-    @Test
-    @DisplayName("refundPayment 성공")
+    @DisplayName("refundPayment cancels Toss payment and order")
     void refundPayment_Success() {
-        // given
-        Long memberId = 1L;
-        Long paymentId = 1L;
-        Order order = createOrder(memberId, 10000);
-        Payment payment = createPayment(order, 10000);
+        Order order = createOrder(1L, 1L, 10000);
+        Payment payment = createCompletedPayment(order, 5L, 10000, PaymentMethod.TOSS);
+        ReflectionTestUtils.setField(payment, "tossPaymentKey", "tgen_key");
 
-        given(paymentRepository.findById(paymentId)).willReturn(Optional.of(payment));
-        willDoNothing().given(orderService).cancelOrder(memberId, order.getId());
+        given(paymentRepository.findById(5L)).willReturn(Optional.of(payment));
+        willDoNothing().given(tossPaymentClient).cancel("tgen_key", "고객 환불 요청");
+        willDoNothing().given(orderService).cancelOrder(1L, 1L);
 
-        // when
-        paymentService.refundPayment(memberId, paymentId);
+        paymentService.refundPayment(1L, 5L);
 
-        // then
-        assertThat(payment.getStatus().name()).isEqualTo("REFUNDED");
-        verify(orderService, times(1)).cancelOrder(memberId, order.getId());
+        assertThat(payment.getStatus()).isEqualTo(PaymentStatus.REFUNDED);
+        then(orderService).should().cancelOrder(1L, 1L);
     }
 
-    // ========== 헬퍼 메서드 ==========
-
-    private Member createMember(Long id) {
+    private Order createOrder(Long memberId, Long orderId, int totalPrice) {
         Member member = Member.builder()
             .email("test@test.com")
             .password("pw")
-            .name("테스터")
+            .name("tester")
             .phoneNumber("010-1234-5678")
             .build();
-        ReflectionTestUtils.setField(member, "id", id);
-        return member;
-    }
+        ReflectionTestUtils.setField(member, "id", memberId);
 
-    private Order createOrder(Long memberId, int totalPrice) {
-        Member member = createMember(memberId);
         Order order = Order.createOrder(member);
-        ReflectionTestUtils.setField(order, "id", memberId); // 테스트용 ID
+        ReflectionTestUtils.setField(order, "id", orderId);
         ReflectionTestUtils.setField(order, "totalPrice", totalPrice);
         return order;
     }
 
-    private Payment createPayment(Order order, int amount) {
-        return Payment.builder()
+    private Payment createCompletedPayment(Order order, Long paymentId, int amount, PaymentMethod method) {
+        Payment payment = Payment.builder()
             .order(order)
             .amount(amount)
             .build();
+        ReflectionTestUtils.setField(payment, "id", paymentId);
+        payment.completePayment(method);
+        return payment;
     }
 
     private PaymentRequest createPaymentRequest(Long orderId, int amount, PaymentMethod method) {

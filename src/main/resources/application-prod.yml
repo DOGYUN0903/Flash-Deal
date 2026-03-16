@@ -3,6 +3,11 @@ spring:
   application:
     name: flash-deal
 
+  data:
+    redis:
+      host: ${REDIS_HOST}
+      port: ${REDIS_PORT}
+
   datasource:
     url: jdbc:mysql://${MYSQL_HOST}/${MYSQL_DBNAME}?serverTimezone=Asia/Seoul&characterEncoding=UTF-8&useUnicode=true
     username: ${MYSQL_USERNAME}
@@ -17,6 +22,12 @@ spring:
       hibernate:
         dialect: org.hibernate.dialect.MySQLDialect
         format_sql: false
+
+  session:
+    store-type: redis
+    timeout: ${SESSION_TIMEOUT:30m}
+    redis:
+      namespace: ${SESSION_NAMESPACE:flashdeal:session}
 
 toss:
   base-url: ${TOSS_BASE_URL}
