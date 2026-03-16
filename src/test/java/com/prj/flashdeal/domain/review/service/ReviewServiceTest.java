@@ -138,7 +138,7 @@ class ReviewServiceTest {
 
         // then
         assertThat(response).isNotNull();
-        assertThat(response.getData()).hasSize(1);
+        assertThat(response.getContent()).hasSize(1);
     }
 
     // ========== 헬퍼 메서드 ==========

@@ -95,7 +95,7 @@ class DealServiceTest {
 
         // when & then
         assertThatThrownBy(() -> dealService.createDealOrder(memberId, dealId, request))
-            .isInstanceOf(DealException.class);
+                .isInstanceOf(DealException.class);
     }
 
     @Test
@@ -115,7 +115,7 @@ class DealServiceTest {
 
         // when & then
         assertThatThrownBy(() -> dealService.createDealOrder(memberId, dealId, request))
-            .isInstanceOf(DealException.class);
+                .isInstanceOf(DealException.class);
     }
 
     @Test
@@ -147,29 +147,29 @@ class DealServiceTest {
 
         // when & then
         assertThatThrownBy(() -> dealService.getDeal(999L))
-            .isInstanceOf(DealException.class);
+                .isInstanceOf(DealException.class);
     }
 
     // ========== 헬퍼 메서드 ==========
 
     private Member createMember(Long id) {
         Member member = Member.builder()
-            .email("test@test.com")
-            .password("password123")
-            .name("테스터")
-            .phoneNumber("010-1234-5678")
-            .build();
+                .email("test@test.com")
+                .password("password123")
+                .name("테스터")
+                .phoneNumber("010-1234-5678")
+                .build();
         ReflectionTestUtils.setField(member, "id", id);
         return member;
     }
 
     private Product createProduct(Long id, int price) {
         Product product = Product.builder()
-            .name("테스트 상품")
-            .description("테스트 상품 설명")
-            .price(price)
-            .category(ProductCategory.ELECTRONICS)
-            .build();
+                .name("테스트 상품")
+                .description("테스트 상품 설명")
+                .price(price)
+                .category(ProductCategory.ELECTRONICS)
+                .build();
         ReflectionTestUtils.setField(product, "id", id);
         product.markOnSale();
         return product;
@@ -177,12 +177,12 @@ class DealServiceTest {
 
     private Deal createActiveDeal(Long id, Product product, int discountPrice) {
         Deal deal = Deal.builder()
-            .product(product)
-            .title("테스트 딜")
-            .discountPrice(discountPrice)
-            .startAt(LocalDateTime.now().minusHours(1))
-            .endAt(LocalDateTime.now().plusHours(1))
-            .build();
+                .product(product)
+                .title("테스트 딜")
+                .discountPrice(discountPrice)
+                .startAt(LocalDateTime.now().minusHours(1))
+                .endAt(LocalDateTime.now().plusHours(1))
+                .build();
         deal.activate();
         ReflectionTestUtils.setField(deal, "id", id);
         return deal;
@@ -190,12 +190,12 @@ class DealServiceTest {
 
     private Deal createScheduledDeal(Long id, Product product, int discountPrice) {
         Deal deal = Deal.builder()
-            .product(product)
-            .title("예정 딜")
-            .discountPrice(discountPrice)
-            .startAt(LocalDateTime.now().plusHours(1))
-            .endAt(LocalDateTime.now().plusHours(3))
-            .build();
+                .product(product)
+                .title("예정 딜")
+                .discountPrice(discountPrice)
+                .startAt(LocalDateTime.now().plusHours(1))
+                .endAt(LocalDateTime.now().plusHours(3))
+                .build();
         ReflectionTestUtils.setField(deal, "id", id);
         return deal;
     }
