@@ -36,5 +36,11 @@ out/
 ### VS Code ###
 .vscode/
 
+# Gradle user home (CI cache)
+.gradle-user-home/
+
+# Claude Code
+.claude/
+
 # Environment variables
 .env
